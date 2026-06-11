@@ -213,8 +213,25 @@ export default function Perfil() {
 
 // ─── backup: exportar/importar (spec data-export) ─────────────────────────────
 
+/** Borra TODO lo del usuario: fotos del bucket, cafés (cascada: paquetes,
+ * recetas, brews) y molinillos. Solo se invoca tras validar el backup y
+ * confirmar el reemplazo (spec data-export). */
+async function wipeAll(userId: string) {
+  const { data: files } = await supabase.storage.from('brew-photos').list(userId)
+  if (files && files.length > 0) {
+    await supabase.storage.from('brew-photos').remove(files.map((f) => `${userId}/${f.name}`))
+  }
+  // RLS limita a las filas propias; el filtro amplio es solo el requisito de supabase-js
+  const { error: e1 } = await supabase.from('coffees').delete().gte('created_at', '1970-01-01')
+  if (e1) throw new Error(`borrando cafés: ${e1.message}`)
+  const { error: e2 } = await supabase.from('grinders').delete().gte('created_at', '1970-01-01')
+  if (e2) throw new Error(`borrando molinillos: ${e2.message}`)
+}
+
 function BackupSection() {
+  const { session } = useAuth()
   const [busy, setBusy] = useState(false)
+  const [replace, setReplace] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
   async function exportJson() {
@@ -239,8 +256,20 @@ function BackupSection() {
       const parsed: unknown = JSON.parse(await file.text())
       const result = validateBackup(parsed)
       if (!result.ok) {
+        // la validación SIEMPRE va antes que cualquier borrado (spec data-export)
         setMessage(`No se importó nada: ${result.error.field} — ${result.error.detail}`)
         return
+      }
+      if (replace) {
+        const sure = window.confirm(
+          'REEMPLAZAR: se borrarán TODOS tus datos actuales (cafés, paquetes, recetas, extracciones, molinillos y fotos) antes de importar. Esta acción no se puede deshacer. ¿Continuar?',
+        )
+        if (!sure) {
+          setMessage('Reemplazo cancelado: no se borró ni se importó nada.')
+          return
+        }
+        if (!session) throw new Error('sesión no disponible')
+        await wipeAll(session.user.id)
       }
       const rows = remapBackup(result.backup, () => crypto.randomUUID())
       // orden por dependencias; ids regenerados → sin colisiones (design D3)
@@ -256,8 +285,9 @@ function BackupSection() {
         if (error) throw new Error(`${table}: ${error.message}`)
       }
       setMessage(
-        `✓ Importado: ${rows.coffees.length} cafés, ${rows.coffee_bags.length} paquetes, ${rows.recipes.length} recetas, ${rows.grinders.length} molinillos, ${rows.brews.length} extracciones.`,
+        `✓ ${replace ? 'Datos anteriores borrados. ' : ''}Importado: ${rows.coffees.length} cafés, ${rows.coffee_bags.length} paquetes, ${rows.recipes.length} recetas, ${rows.grinders.length} molinillos, ${rows.brews.length} extracciones.`,
       )
+      setReplace(false)
     } catch (e) {
       setMessage(`Error al importar: ${e instanceof Error ? e.message : 'fichero ilegible'}`)
     } finally {
@@ -278,8 +308,15 @@ function BackupSection() {
           ⬇ Brews CSV
         </button>
       </div>
-      <label className={`press mt-2 flex items-center justify-center rounded-xl border hairline py-2.5 text-sm font-semibold ${busy ? 'opacity-50' : ''}`}>
-        ⬆ Importar backup JSON
+      <label className="mt-3 flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)}
+          className="h-4 w-4 accent-danger" />
+        <span>
+          Reemplazar: <span className="text-ink/60">borrar todos mis datos antes de importar</span>
+        </span>
+      </label>
+      <label className={`press mt-2 flex items-center justify-center rounded-xl border py-2.5 text-sm font-semibold ${replace ? 'border-danger/50 text-danger' : 'hairline'} ${busy ? 'opacity-50' : ''}`}>
+        ⬆ Importar backup JSON{replace ? ' (reemplazando)' : ''}
         <input type="file" accept="application/json" className="hidden" disabled={busy}
           onChange={(e) => {
             const f = e.target.files?.[0]

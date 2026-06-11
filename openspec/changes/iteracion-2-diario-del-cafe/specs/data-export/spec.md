@@ -26,3 +26,18 @@ El sistema SHALL importar únicamente backups JSON del formato propio, validando
 #### Scenario: Fichero inválido
 - **WHEN** el JSON no pasa la validación estructural (versión, tipos o catas inválidas)
 - **THEN** no se escribe nada en la base de datos y se explica el motivo
+
+### Requirement: Import con reemplazo opcional
+El usuario SHALL poder elegir entre añadir el backup a sus datos existentes (comportamiento por defecto) o reemplazarlos. En modo reemplazo, el sistema SHALL pedir confirmación explícita y, solo tras confirmarla y validar el fichero, borrar todos los datos del usuario (cafés y, en cascada, sus paquetes, recetas y extracciones; molinillos; y fotos del bucket) antes de insertar el backup.
+
+#### Scenario: Reemplazo confirmado
+- **WHEN** el usuario importa con la opción «reemplazar» activada y confirma el aviso
+- **THEN** sus datos anteriores se borran y al terminar solo existen las entidades del backup
+
+#### Scenario: Reemplazo cancelado
+- **WHEN** el usuario activa «reemplazar» pero cancela la confirmación
+- **THEN** no se borra ni se importa nada
+
+#### Scenario: Fichero inválido en modo reemplazo
+- **WHEN** el fichero no pasa la validación con «reemplazar» activado
+- **THEN** no se borra nada: la validación ocurre antes que cualquier borrado
