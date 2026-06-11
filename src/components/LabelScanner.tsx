@@ -10,11 +10,13 @@ import { parseLabel, type ParsedLabel } from '../lib/ocrParse.ts'
 export default function LabelScanner({ onResult }: { onResult: (parsed: ParsedLabel) => void }) {
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [failed, setFailed] = useState(false)
+  const [rawText, setRawText] = useState<string | null>(null)
+  const [detected, setDetected] = useState<string[] | null>(null)
 
   async function scan(file: File) {
     setBusy(true)
-    setFailed(false)
+    setDetected(null)
+    setRawText(null)
     setProgress(0)
     try {
       const [{ default: Tesseract }, roastersRes] = await Promise.all([
@@ -24,17 +26,24 @@ export default function LabelScanner({ onResult }: { onResult: (parsed: ParsedLa
       const known = [
         ...new Set(((roastersRes.data as { roaster: string }[] | null) ?? []).map((r) => r.roaster)),
       ]
-      const { data } = await Tesseract.recognize(file, 'spa', {
+      // spa+eng: las etiquetas de especialidad mezclan ambos idiomas
+      const { data } = await Tesseract.recognize(file, 'spa+eng', {
         logger: (m) => {
           if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100))
         },
       })
+      setRawText(data.text.trim() || null)
       const parsed = parseLabel(data.text, known)
-      const empty = !parsed.name && !parsed.roaster && !parsed.origin && !parsed.roastDate
-      if (empty) setFailed(true)
-      else onResult(parsed)
+      const found = [
+        parsed.name && 'nombre',
+        parsed.roaster && 'tostador',
+        parsed.origin && 'origen',
+        parsed.roastDate && 'fecha de tueste',
+      ].filter((x): x is string => Boolean(x))
+      setDetected(found)
+      if (found.length > 0) onResult(parsed)
     } catch {
-      setFailed(true)
+      setDetected([])
     } finally {
       setBusy(false)
     }
@@ -57,10 +66,22 @@ export default function LabelScanner({ onResult }: { onResult: (parsed: ParsedLa
           }}
         />
       </label>
-      {failed && (
-        <p className="mt-1 text-xs text-warn">
-          No se reconoció la etiqueta; rellena los campos a mano.
+
+      {detected !== null && (
+        <p className={`mt-1 text-xs ${detected.length ? 'text-leaf' : 'text-warn'}`}>
+          {detected.length
+            ? `✓ Detectado: ${detected.join(', ')}. Revisa y corrige lo que haga falta.`
+            : 'No se reconoció nada útil; rellena los campos a mano.'}
         </p>
+      )}
+
+      {rawText && (
+        <details className="mt-1">
+          <summary className="cursor-pointer text-xs text-ink/50">Ver texto leído por el OCR</summary>
+          <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg bg-crema/40 p-2 text-[11px] text-ink/70">
+            {rawText}
+          </pre>
+        </details>
       )}
     </div>
   )

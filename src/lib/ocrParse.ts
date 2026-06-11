@@ -15,15 +15,33 @@ const MONTHS_ES: Record<string, number> = {
   julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
 }
 
-const ORIGINS = [
-  'colombia', 'etiopía', 'etiopia', 'brasil', 'kenia', 'guatemala', 'honduras',
-  'perú', 'peru', 'costa rica', 'ruanda', 'burundi', 'méxico', 'mexico',
-  'panamá', 'panama', 'yemen', 'india', 'indonesia', 'vietnam', 'el salvador',
-  'nicaragua', 'bolivia', 'ecuador', 'tanzania', 'uganda',
-]
+// SIN tildes: se comparan contra texto normalizado. La clave es la forma
+// normalizada; el valor, cómo mostrarla.
+const ORIGINS: Record<string, string> = {
+  colombia: 'Colombia', etiopia: 'Etiopía', brasil: 'Brasil', kenia: 'Kenia',
+  guatemala: 'Guatemala', honduras: 'Honduras', peru: 'Perú',
+  'costa rica': 'Costa Rica', ruanda: 'Ruanda', burundi: 'Burundi',
+  mexico: 'México', panama: 'Panamá', yemen: 'Yemen', india: 'India',
+  indonesia: 'Indonesia', vietnam: 'Vietnam', 'el salvador': 'El Salvador',
+  nicaragua: 'Nicaragua', bolivia: 'Bolivia', ecuador: 'Ecuador',
+  tanzania: 'Tanzania', uganda: 'Uganda',
+}
+
+/** palabras que delatan la línea del tostador en una etiqueta */
+const ROASTER_HINTS = /\b(coffee|cafe|roaster|roasters|roastery|tostador|tostadores|tostaduria|specialty)\b/
 
 function normalize(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+}
+
+/** proporción de caracteres alfabéticos: filtra líneas de ruido del OCR */
+function letterRatio(line: string): number {
+  const letters = line.match(/[a-záéíóúñü]/gi)?.length ?? 0
+  return letters / line.length
 }
 
 function toIso(d: number, m: number, y: number): string | null {
@@ -54,7 +72,7 @@ export function similarity(a: string, b: string): number {
 
 const ROASTER_MATCH_THRESHOLD = 0.7
 
-/** Fecha de tueste: prioriza la fecha más próxima a la palabra «tost…». */
+/** Fecha de tueste: prioriza la fecha más próxima a «tostado»/«tueste»/«roast». */
 function findRoastDate(text: string): string | null {
   const lower = normalize(text)
   const numeric = [...text.matchAll(/(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/g)]
@@ -73,7 +91,7 @@ function findRoastDate(text: string): string | null {
   }
   if (candidates.length === 0) return null
 
-  const tostIdx = lower.search(/tost|tuest/)
+  const tostIdx = lower.search(/tost|tuest|roast/)
   if (tostIdx >= 0) {
     candidates.sort((a, b) => Math.abs(a.index - tostIdx) - Math.abs(b.index - tostIdx))
   }
@@ -81,12 +99,13 @@ function findRoastDate(text: string): string | null {
 }
 
 export function parseLabel(text: string, knownRoasters: string[]): ParsedLabel {
+  // líneas con sustancia: largo mínimo y mayoría de letras (fuera ruido OCR)
   const lines = text
     .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.length >= 3)
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter((l) => l.length >= 3 && letterRatio(l) >= 0.5)
 
-  // tostador: mejor match difuso contra los ya conocidos (spec: evitar duplicados)
+  // 1) tostador conocido: mejor match difuso contra el catálogo (evita duplicados)
   let roaster: string | null = null
   let best = ROASTER_MATCH_THRESHOLD
   for (const line of lines) {
@@ -98,11 +117,16 @@ export function parseLabel(text: string, knownRoasters: string[]): ParsedLabel {
       }
     }
   }
+  // 2) tostador nuevo: línea con pinta de marca (coffee/roasters/tostador…)
+  if (!roaster) {
+    const hinted = lines.find((l) => ROASTER_HINTS.test(normalize(l)))
+    if (hinted) roaster = hinted
+  }
 
-  // origen: primer país de la lista presente en el texto
+  // origen: primer país presente en el texto normalizado
   const lower = normalize(text)
-  const originHit = ORIGINS.find((o) => lower.includes(o))
-  const origin = originHit ? originHit.replace(/\b\w/g, (c) => c.toUpperCase()) : null
+  const originKey = Object.keys(ORIGINS).find((o) => lower.includes(o))
+  const origin = originKey ? ORIGINS[originKey] : null
 
   // nombre: línea más larga de la mitad superior que no sea fecha ni el tostador
   const upperHalf = lines.slice(0, Math.max(3, Math.ceil(lines.length / 2)))

@@ -36,6 +36,27 @@ describe('parseLabel (spec label-scanner)', () => {
   it('fechas inválidas se descartan', () => {
     expect(parseLabel('tostado 45/13/2026', []).roastDate).toBeNull()
   })
+
+  it('origen con tilde en la etiqueta: «Etiopía» se detecta (regresión)', () => {
+    expect(parseLabel('Café de ETIOPÍA región Guji', []).origin).toBe('Etiopía')
+    expect(parseLabel('origen: Perú', []).origin).toBe('Perú')
+  })
+
+  it('tostador NUEVO sin catálogo: línea con pinta de marca (regresión)', () => {
+    const r = parseLabel('HOLA COFFEE ROASTERS\nFinca La Esperanza\nColombia', [])
+    expect(r.roaster).toBe('HOLA COFFEE ROASTERS')
+    expect(r.name).toBe('Finca La Esperanza')
+  })
+
+  it('también reconoce «tostadores» en español como pista de marca', () => {
+    const r = parseLabel('Bonita finca\nTostadores del Sur', [])
+    expect(r.roaster).toBe('Tostadores del Sur')
+  })
+
+  it('las líneas de ruido OCR (símbolos) no contaminan el nombre', () => {
+    const r = parseLabel('~~==--##++**\nKenia Nyeri AA\n....;;;;....', [])
+    expect(r.name).toBe('Kenia Nyeri AA')
+  })
 })
 
 describe('similarity', () => {
