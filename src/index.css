@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/*
+ * DIARIO DEL CAFÉ — sistema de diseño "Carta de tostador"
+ * (estética de carta/etiqueta de tostador de especialidad: papel crema,
+ * tinta espresso, acentos caramelo y cobre, serif de display para titulares,
+ * Inter de cuerpo con cifras tabulares para gramos y segundos)
+ *
+ * Cambiar la estética = tocar este fichero, no las pantallas (design D8).
+ */
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "DM Serif Display", ui-serif, Georgia, serif;
+
+  --color-paper: #f8f3ea;   /* papel crema de fondo */
+  --color-card: #fffdf8;    /* superficie de tarjeta, apenas más clara */
+  --color-ink: #2b211b;     /* tinta espresso para texto */
+  --color-crema: #ecdcc0;   /* crema — superficies suaves y chips */
+  --color-caramel: #a9703d; /* caramelo — primario */
+  --color-copper: #8a4b2b;  /* cobre — acento activo/enfático */
+  --color-leaf: #65775a;    /* hoja — frescura/éxito */
+  --color-warn: #c08a27;    /* miel — avisos */
+  --color-danger: #a8402f;  /* teja — errores y fuera de ventana */
+
+  /* profundidad por aire y reglas hairline; sombra casi imperceptible */
+  --shadow-soft: 0 1px 2px rgb(43 33 27 / 0.05);
+  --shadow-soft-lg: 0 4px 16px rgb(43 33 27 / 0.08);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+
+  /* cifras tabulares para gramos, ratios y segundos */
+  [data-numeric], table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* micro-labels en versalitas espaciadas (overline de etiqueta) */
+  :where(.uppercase) {
+    letter-spacing: 0.14em;
+    font-weight: 600;
+  }
+
+  :where(button, input, select, textarea) {
+    border-radius: 0.5rem;
+  }
+
+  /* targets táctiles cómodos para uso a una mano */
+  :where(button, a) {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* tarjeta de carta: regla hairline + radio contenido sobre superficie clara */
+@utility card {
+  background-color: var(--color-card);
+  border: 1px solid rgb(43 33 27 / 0.12);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-soft);
+}
+
+/* regla hairline sola, para listas y divisores */
+@utility hairline {
+  border-color: rgb(43 33 27 / 0.12);
+}
+
+/* feedback táctil al pulsar */
+@utility press {
+  transition: transform 120ms ease;
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* pulso suave (cronómetro en rango, avisos) */
+@utility pulse-soft {
+  animation: pulse-soft 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
