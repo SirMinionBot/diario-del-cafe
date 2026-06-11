@@ -2,7 +2,151 @@
   "version": 1,
   "exportedAt": "2026-06-11T20:30:00.000Z",
   "coffee_bags": [],
-  "recipes": [],
+  "recipes": [
+    {
+      "id": "rec-1",
+      "coffee_id": "inc-colombia",
+      "method": "espresso",
+      "ratio": 2.0,
+      "dose_g": 18.0,
+      "grind_setting": "fino",
+      "water_temp_c": 93,
+      "target_time_s": 27,
+      "notes": "Punto de partida clásico 1:2; con la panela del Huila admite alargar a 1:2,2."
+    },
+    {
+      "id": "rec-2",
+      "coffee_id": "inc-light-etiopia",
+      "method": "v60",
+      "ratio": 16.5,
+      "dose_g": 15.0,
+      "grind_setting": "media-gruesa",
+      "water_temp_c": 94,
+      "target_time_s": 180,
+      "notes": "Bloom de 45 s y dos vertidos; resalta mandarina y jazmín."
+    },
+    {
+      "id": "rec-3",
+      "coffee_id": "inc-coldbrew",
+      "method": "coldbrew",
+      "ratio": 8.0,
+      "dose_g": 60.0,
+      "grind_setting": "gruesa",
+      "water_temp_c": 20,
+      "target_time_s": 57600,
+      "notes": "16 h en nevera; diluir 1:1 al servir."
+    },
+    {
+      "id": "rec-4",
+      "coffee_id": "ss-blend-10",
+      "method": "espresso",
+      "ratio": 2.2,
+      "dose_g": 18.0,
+      "grind_setting": "fino",
+      "water_temp_c": 92,
+      "target_time_s": 28,
+      "notes": "El Maragogype agradece ratio algo largo para domar el amargor del chocolate."
+    },
+    {
+      "id": "rec-5",
+      "coffee_id": "ss-colombia-villa-nueva",
+      "method": "v60",
+      "ratio": 16.0,
+      "dose_g": 15.0,
+      "grind_setting": "media",
+      "water_temp_c": 93,
+      "target_time_s": 165,
+      "notes": "Tueste claro de especialidad: vertidos suaves para no sobreextraer el final especiado."
+    },
+    {
+      "id": "rec-6",
+      "coffee_id": "nom-entre-rios-espresso",
+      "method": "espresso",
+      "ratio": 2.4,
+      "dose_g": 18.5,
+      "grind_setting": "fino",
+      "water_temp_c": 93,
+      "target_time_s": 28,
+      "notes": "Receta orientativa de tostador moderno: ratio largo para tueste medio claro."
+    },
+    {
+      "id": "rec-7",
+      "coffee_id": "nom-timbuyacu-filtro",
+      "method": "v60",
+      "ratio": 16.0,
+      "dose_g": 15.0,
+      "grind_setting": "media",
+      "water_temp_c": 95,
+      "target_time_s": 175,
+      "notes": "Agua caliente (95°) para empujar dulzor de toffee."
+    },
+    {
+      "id": "rec-8",
+      "coffee_id": "toma-guarani",
+      "method": "espresso",
+      "ratio": 2.5,
+      "dose_g": 18.0,
+      "grind_setting": "fino",
+      "water_temp_c": 94,
+      "target_time_s": 30,
+      "notes": "Pensado para leche: 1:2,5 mantiene el chocolate sin acidez punzante."
+    },
+    {
+      "id": "rec-9",
+      "coffee_id": "toma-san-ignacio",
+      "method": "aeropress",
+      "ratio": 14.0,
+      "dose_g": 14.0,
+      "grind_setting": "media-fina",
+      "water_temp_c": 85,
+      "target_time_s": 120,
+      "notes": "Inmersión 1:45 + prensado suave 30 s."
+    },
+    {
+      "id": "rec-10",
+      "coffee_id": "ss-seleccion-superior",
+      "method": "prensa",
+      "ratio": 15.0,
+      "dose_g": 20.0,
+      "grind_setting": "gruesa",
+      "water_temp_c": 95,
+      "target_time_s": 270,
+      "notes": "Cuatro minutos y medio de reposo; romper costra y servir sin prensar a fondo."
+    },
+    {
+      "id": "rec-11",
+      "coffee_id": "mar-gran-aroma-natural-en-grano",
+      "method": "moka",
+      "ratio": 10.0,
+      "dose_g": 16.0,
+      "grind_setting": "media-fina",
+      "water_temp_c": 95,
+      "target_time_s": 240,
+      "notes": "Agua precalentada, fuego medio y cortar al primer borboteo."
+    },
+    {
+      "id": "rec-12",
+      "coffee_id": "illy-classico",
+      "method": "espresso",
+      "ratio": 2.0,
+      "dose_g": 16.0,
+      "grind_setting": "fino",
+      "water_temp_c": 92,
+      "target_time_s": 26,
+      "notes": "Dosis contenida al estilo italiano: 16 g → 32 g."
+    },
+    {
+      "id": "rec-13",
+      "coffee_id": "lvz-qualita-oro",
+      "method": "espresso",
+      "ratio": 2.0,
+      "dose_g": 16.0,
+      "grind_setting": "fino",
+      "water_temp_c": 92,
+      "target_time_s": 27,
+      "notes": "Clásico de superautomática llevado a portafiltro: dulce y sin estridencias."
+    }
+  ],
   "grinders": [],
   "brews": [],
   "coffees": [

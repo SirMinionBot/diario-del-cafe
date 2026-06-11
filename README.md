@@ -42,7 +42,9 @@ convierte cada café en conocimiento reutilizable.
 cafés reales de 8 marcas** (gamas completas investigadas online en junio de
 2026): Incapto Coffee (19), Cafés Sierra Segura (14), Nomad Coffee (24),
 Toma Café (9), Lavazza (8), illy (8), Bonka (8) y Marcilla (6) — desde el
-súper hasta microlotes Geisha de competición (17–130 €/kg). Para cargarlo:
+súper hasta microlotes Geisha de competición (17–130 €/kg), más **13 recetas
+de ejemplo** (espresso, V60, AeroPress, prensa, moka y cold brew) asociadas a
+cafés del catálogo. Para cargarlo:
 **Perfil → ⬆ Importar backup JSON**. El import valida el fichero, regenera
 los ids y lo asocia a tu cuenta; importar dos veces duplica (añade, no
 reemplaza). Los catálogos de especialidad rotan: es una foto de ese momento.
