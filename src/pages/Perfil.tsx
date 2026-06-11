@@ -36,14 +36,14 @@ async function fetchAll(): Promise<Omit<BackupV1, 'version' | 'exportedAt'>> {
 }
 
 type Snapshot = {
-  coffees: { id: string; name: string; price_per_kg: number | null }[]
+  coffees: { id: string; name: string; roaster: string | null; price_per_kg: number | null }[]
   bags: { coffee_id: string; weight_g: number; created_at: string }[]
   brews: { coffee_id: string; method: MethodId; dose_g: number; rating: number | null; brewed_at: string }[]
 }
 
 async function fetchStats(): Promise<Snapshot> {
   const [c, b, w] = await Promise.all([
-    supabase.from('coffees').select('id, name, price_per_kg'),
+    supabase.from('coffees').select('id, name, roaster, price_per_kg'),
     supabase.from('coffee_bags').select('coffee_id, weight_g, created_at'),
     supabase.from('brews').select('coffee_id, method, dose_g, rating, brewed_at'),
   ])
@@ -89,8 +89,12 @@ export default function Perfil() {
         snap.brews.map((b) => ({ coffeeId: b.coffee_id, rating: b.rating })),
       )
     : []
-  const shown = rankMode === 'value' ? rankByValue(ranked) : ranked
+  // los «sin valorar» no se listan: se agregan en un recuento (delta brand-ranking)
+  const shown =
+    rankMode === 'value' ? rankByValue(ranked) : ranked.filter((c) => c.avgRating !== null)
   const excludedFromValue = rankMode === 'value' ? ranked.length - shown.length : 0
+  const unratedCount = rankMode === 'rating' ? ranked.length - shown.length : 0
+  const roasterOf = new Map(snap?.coffees.map((c) => [c.id, c.roaster]) ?? [])
 
   return (
     <section className="flex flex-col gap-4">
@@ -168,18 +172,24 @@ export default function Perfil() {
               <span className="truncate">
                 <span className="mr-1.5 text-ink/40" data-numeric>{i + 1}.</span>
                 {c.name}
+                {roasterOf.get(c.coffeeId) && (
+                  <span className="text-ink/45"> · {roasterOf.get(c.coffeeId)}</span>
+                )}
               </span>
-              {c.avgRating !== null ? (
+              {c.avgRating !== null && (
                 <span className="shrink-0" data-numeric>
                   ⭐ {c.avgRating}
                   <span className="ml-1 text-xs text-ink/40">({c.brewCount})</span>
                 </span>
-              ) : (
-                <span className="shrink-0 text-xs text-ink/40">sin valorar</span>
               )}
             </li>
           ))}
         </ol>
+        {unratedCount > 0 && (
+          <p className="mt-2 text-[11px] text-ink/45" data-numeric>
+            {unratedCount} café{unratedCount === 1 ? '' : 's'} sin valorar aún.
+          </p>
+        )}
         {excludedFromValue > 0 && (
           <p className="mt-2 text-[11px] text-ink/45" data-numeric>
             {excludedFromValue} café{excludedFromValue === 1 ? '' : 's'} sin precio o sin nota, fuera de esta ordenación.

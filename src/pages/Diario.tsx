@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase.ts'
 import { useOfflineSync } from '../hooks/useOfflineSync.ts'
 import { openBrewQueue, type PendingBrew } from '../lib/offlineQueue.ts'
+import CoffeeSelect from '../components/CoffeeSelect.tsx'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { formatRatio, ratioFor } from '../lib/ratio.ts'
 import { formatTime } from '../lib/timer.ts'
@@ -67,6 +68,10 @@ export default function Diario() {
     }
   }, [])
 
+  const coffeeById = useMemo(
+    () => new Map(snap?.coffees.map((c) => [c.id, c]) ?? []),
+    [snap],
+  )
   const coffeeName = useMemo(
     () => new Map(snap?.coffees.map((c) => [c.id, c.name]) ?? []),
     [snap],
@@ -131,13 +136,13 @@ export default function Diario() {
 
       {/* filtros por café y método (spec brew-log) */}
       <div className="mt-3 flex gap-2">
-        <select value={coffeeFilter} onChange={(e) => setCoffeeFilter(e.target.value)}
-          className="card flex-1 px-2 py-2 text-sm">
-          <option value="">Todos los cafés</option>
-          {snap?.coffees.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <CoffeeSelect
+          coffees={snap?.coffees ?? []}
+          value={coffeeFilter}
+          onChange={setCoffeeFilter}
+          emptyLabel="Todos los cafés"
+          className="card min-w-0 flex-1 px-2 py-2 text-sm"
+        />
         <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value as '' | MethodId)}
           className="card flex-1 px-2 py-2 text-sm">
           <option value="">Todos los métodos</option>
@@ -202,7 +207,12 @@ export default function Diario() {
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="truncate font-semibold">{coffeeName.get(brew.coffee_id) ?? '—'}</p>
+                  <p className="truncate font-semibold">
+                    {coffeeName.get(brew.coffee_id) ?? '—'}
+                    {coffeeById.get(brew.coffee_id)?.roaster && (
+                      <span className="font-normal text-ink/45"> · {coffeeById.get(brew.coffee_id)!.roaster}</span>
+                    )}
+                  </p>
                   <span className="shrink-0 text-xs text-ink/50">
                     {brew.brewed_at.slice(0, 10)}
                   </span>

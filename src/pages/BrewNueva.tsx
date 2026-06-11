@@ -9,6 +9,7 @@ import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { dialIn, type DialInSuggestion, type TasteLabel } from '../lib/dialin.ts'
 import { ratioFor } from '../lib/ratio.ts'
 import { compressPhoto } from '../lib/photo.ts'
+import CoffeeSelect from '../components/CoffeeSelect.tsx'
 import { FLAVOR_WHEEL, TASTING_AXES, parseTasting, type TastingAxis } from '../lib/tasting.ts'
 import { daysSinceRoast, freshnessState } from '../lib/freshness.ts'
 import type { CoffeeBag } from '../types.ts'
@@ -204,12 +205,14 @@ export default function BrewNueva() {
       <form onSubmit={save} className="mt-4 flex flex-col gap-3">
         <label>
           <span className={label}>Café *</span>
-          <select required value={coffeeId} onChange={(e) => selectCoffee(e.target.value)} className={input}>
-            <option value="">— Elige un café —</option>
-            {coffees.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <CoffeeSelect
+            coffees={coffees}
+            value={coffeeId}
+            onChange={selectCoffee}
+            emptyLabel="— Elige un café —"
+            required
+            className={input}
+          />
         </label>
 
         {coffeeId && bags.some((b) => b.coffee_id === coffeeId) && (

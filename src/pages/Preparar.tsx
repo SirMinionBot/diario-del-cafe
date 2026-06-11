@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import BrewTimer from '../components/BrewTimer.tsx'
+import CoffeeSelect from '../components/CoffeeSelect.tsx'
 import { useCoffeeData } from '../hooks/useCoffeeData.ts'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { coffeeForWater, formatRatio, waterForCoffee } from '../lib/ratio.ts'
@@ -80,18 +81,13 @@ export default function Preparar() {
 
       {/* selector de café (opcional); su receta sobrescribe los defaults */}
       {coffees.length > 0 && (
-        <select
+        <CoffeeSelect
+          coffees={coffees}
           value={coffeeId}
-          onChange={(e) => selectCoffee(e.target.value)}
+          onChange={selectCoffee}
+          emptyLabel="— Sin café concreto (defaults del método) —"
           className="card w-full px-3 py-3 text-base"
-        >
-          <option value="">— Sin café concreto (defaults del método) —</option>
-          {coffees.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        />
       )}
 
       <Link to="/referencias" className="press text-center text-xs font-semibold text-copper">

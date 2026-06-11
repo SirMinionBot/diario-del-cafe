@@ -36,3 +36,4 @@
 - [x] 5.2 `pnpm lint && pnpm test && pnpm build` en verde; actualizar CLAUDE.md y README con las novedades
 - [ ] 5.3 Commit + push (deploy automático a Pages) y QA en móvil: cola offline en modo avión, OCR con un paquete real, comparador
 - [x] 5.4 Import con reemplazo opcional: confirmación explícita, borrado en cascada (cafés→paquetes/recetas/brews, molinillos, fotos del bucket) solo tras validar el fichero (spec `data-export`)
+- [x] 5.5 Catálogos grandes: selectores de café agrupados por tostador (`CoffeeSelect`), tostador visible en diario y podio, y podio sin listar los «sin valorar» (delta spec `brand-ranking`)
