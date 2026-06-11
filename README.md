@@ -38,11 +38,14 @@ convierte cada café en conocimiento reutilizable.
 
 #### Ejemplo de importación
 
-`examples/import-cafes-incapto-sierra-segura.json` es un backup v1 de ejemplo
-con 33 cafés reales (gama completa de Incapto Coffee y de Cafés Sierra Segura,
-investigada en junio de 2026). Para cargarlo: **Perfil → ⬆ Importar backup
-JSON**. El import valida el fichero, regenera los ids y lo asocia a tu cuenta;
-importar dos veces duplica (añade, no reemplaza).
+`examples/import-catalogo-cafes.json` es un backup v1 de ejemplo con **96
+cafés reales de 8 marcas** (gamas completas investigadas online en junio de
+2026): Incapto Coffee (19), Cafés Sierra Segura (14), Nomad Coffee (24),
+Toma Café (9), Lavazza (8), illy (8), Bonka (8) y Marcilla (6) — desde el
+súper hasta microlotes Geisha de competición (17–130 €/kg). Para cargarlo:
+**Perfil → ⬆ Importar backup JSON**. El import valida el fichero, regenera
+los ids y lo asocia a tu cuenta; importar dos veces duplica (añade, no
+reemplaza). Los catálogos de especialidad rotan: es una foto de ese momento.
 
 ## Stack
 
