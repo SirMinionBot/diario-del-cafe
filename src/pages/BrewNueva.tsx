@@ -3,11 +3,24 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase.ts'
 import { useAuth } from '../hooks/useAuth.ts'
 import { useCoffeeData } from '../hooks/useCoffeeData.ts'
+import { useOfflineSync } from '../hooks/useOfflineSync.ts'
+import { openBrewQueue } from '../lib/offlineQueue.ts'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { dialIn, type DialInSuggestion, type TasteLabel } from '../lib/dialin.ts'
 import { ratioFor } from '../lib/ratio.ts'
 import { compressPhoto } from '../lib/photo.ts'
 import { FLAVOR_WHEEL, TASTING_AXES, parseTasting, type TastingAxis } from '../lib/tasting.ts'
+import { daysSinceRoast, freshnessState } from '../lib/freshness.ts'
+import type { CoffeeBag } from '../types.ts'
+
+/** Paquete abierto más fresco en ventana óptima del café (delta coffee-inventory). */
+function preselectBag(bags: CoffeeBag[], coffeeId: string, today: string): string {
+  const candidates = bags
+    .filter((b) => b.coffee_id === coffeeId && b.opened_at !== null)
+    .filter((b) => freshnessState(daysSinceRoast(b.roast_date, today), 'filtro') === 'optimo')
+    .sort((a, b) => b.roast_date.localeCompare(a.roast_date))
+  return candidates[0]?.id ?? ''
+}
 
 const input = 'card mt-1 w-full px-3 py-2.5 text-base'
 const label = 'text-xs text-ink/60'
@@ -38,11 +51,21 @@ const AXIS_LABEL: Record<TastingAxis, string> = {
 export default function BrewNueva() {
   const navigate = useNavigate()
   const { session } = useAuth()
+  const { notifyQueued } = useOfflineSync()
   const prefill = (useLocation().state ?? {}) as PrefillState
-  const { coffees, recipes } = useCoffeeData()
+  const { coffees, recipes, bags, grinders } = useCoffeeData()
+  const today = new Date().toISOString().slice(0, 10)
 
   const [methodId, setMethodId] = useState<MethodId>(prefill.method ?? 'espresso')
   const [coffeeId, setCoffeeId] = useState(prefill.coffeeId ?? '')
+  const [bagId, setBagId] = useState('')
+  const [grinderId, setGrinderId] = useState('')
+  const [grindValue, setGrindValue] = useState('')
+
+  function selectCoffee(id: string) {
+    setCoffeeId(id)
+    setBagId(id ? preselectBag(bags, id, today) : '')
+  }
   const [doseG, setDoseG] = useState(prefill.doseG?.toString() ?? '')
   const [waterG, setWaterG] = useState(prefill.waterG?.toString() ?? '')
   const [timeS, setTimeS] = useState(prefill.timeS?.toString() ?? '')
@@ -66,6 +89,23 @@ export default function BrewNueva() {
     e.preventDefault()
     setSaving(true)
     setError(null)
+    const tasting = showTasting ? parseTasting({ ...axes, descriptores: descriptors }) : null
+    const payload = {
+      coffee_id: coffeeId,
+      bag_id: bagId || null,
+      recipe_id: prefill.recipeId ?? null,
+      method: methodId,
+      dose_g: Number(doseG),
+      water_g: waterG ? Number(waterG) : null,
+      grind_setting: grind.trim() || null,
+      grinder_id: grinderId || null,
+      grind_value: grindValue ? Number(grindValue) : null,
+      time_s: timeS ? Number(timeS) : null,
+      rating: rating || null,
+      taste_label: taste,
+      tasting,
+      notes: notes.trim() || null,
+    }
     try {
       // foto: comprimir en cliente y subir al bucket privado del usuario
       let photoPath: string | null = null
@@ -78,21 +118,7 @@ export default function BrewNueva() {
         if (upErr) throw upErr
       }
 
-      const tasting = showTasting ? parseTasting({ ...axes, descriptores: descriptors }) : null
-      const { error: insErr } = await supabase.from('brews').insert({
-        coffee_id: coffeeId,
-        recipe_id: prefill.recipeId ?? null,
-        method: methodId,
-        dose_g: Number(doseG),
-        water_g: waterG ? Number(waterG) : null,
-        grind_setting: grind.trim() || null,
-        time_s: timeS ? Number(timeS) : null,
-        rating: rating || null,
-        taste_label: taste,
-        tasting,
-        notes: notes.trim() || null,
-        photo_path: photoPath,
-      })
+      const { error: insErr } = await supabase.from('brews').insert({ ...payload, photo_path: photoPath })
       if (insErr) throw insErr
 
       // dial-in tras guardar (spec dial-in-assistant): necesita tiempo + sabor
@@ -102,8 +128,21 @@ export default function BrewNueva() {
         navigate('/diario')
       }
     } catch {
-      // sin conexión las escrituras fallan con aviso claro; el formulario conserva su estado (design D9)
-      setError('No se pudo guardar. ¿Sin conexión? Tus datos siguen en el formulario.')
+      // sin red: encolar con UUID de cliente (spec offline-sync); la foto no
+      // puede subirse offline y se omite
+      const queue = navigator.onLine ? null : await openBrewQueue()
+      if (queue) {
+        await queue.add({
+          id: crypto.randomUUID(),
+          payload,
+          queuedAt: new Date().toISOString(),
+        })
+        notifyQueued()
+        navigate('/diario', { state: { queued: true, photoSkipped: photo !== null } })
+      } else {
+        // sin IndexedDB o fallo no-red: aviso claro y el formulario conserva su estado
+        setError('No se pudo guardar. ¿Sin conexión? Tus datos siguen en el formulario.')
+      }
     } finally {
       setSaving(false)
     }
@@ -165,13 +204,29 @@ export default function BrewNueva() {
       <form onSubmit={save} className="mt-4 flex flex-col gap-3">
         <label>
           <span className={label}>Café *</span>
-          <select required value={coffeeId} onChange={(e) => setCoffeeId(e.target.value)} className={input}>
+          <select required value={coffeeId} onChange={(e) => selectCoffee(e.target.value)} className={input}>
             <option value="">— Elige un café —</option>
             {coffees.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </label>
+
+        {coffeeId && bags.some((b) => b.coffee_id === coffeeId) && (
+          <label>
+            <span className={label}>Paquete</span>
+            <select value={bagId} onChange={(e) => setBagId(e.target.value)} className={input}>
+              <option value="">— Sin paquete —</option>
+              {bags
+                .filter((b) => b.coffee_id === coffeeId)
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    Tueste {b.roast_date} · {b.weight_g} g{b.opened_at ? ' · abierto' : ''}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
         {coffees.length === 0 && (
           <p className="text-xs text-warn">
             Primero crea un café en la pestaña Cafés.
@@ -210,6 +265,25 @@ export default function BrewNueva() {
             <input value={grind} placeholder="12 clics" onChange={(e) => setGrind(e.target.value)} className={input} />
           </label>
         </div>
+
+        {grinders.length > 0 && (
+          <div className="flex gap-3">
+            <label className="flex-1">
+              <span className={label}>Molinillo</span>
+              <select value={grinderId} onChange={(e) => setGrinderId(e.target.value)} className={input}>
+                <option value="">—</option>
+                {grinders.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="w-24">
+              <span className={label}>Ajuste</span>
+              <input type="number" inputMode="decimal" step="0.5" value={grindValue}
+                onChange={(e) => setGrindValue(e.target.value)} className={input} data-numeric />
+            </label>
+          </div>
+        )}
 
         {/* valoración 1–5 */}
         <div>

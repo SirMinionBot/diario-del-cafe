@@ -24,6 +24,15 @@ export type CoffeeBag = {
   created_at: string
 }
 
+export type Grinder = {
+  id: string
+  name: string
+  min_setting: number | null
+  max_setting: number | null
+  step: number | null
+  created_at: string
+}
+
 export type Recipe = {
   id: string
   coffee_id: string
@@ -31,6 +40,8 @@ export type Recipe = {
   ratio: number
   dose_g: number
   grind_setting: string | null
+  grinder_id: string | null
+  grind_value: number | null
   water_temp_c: number | null
   target_time_s: number | null
   notes: string | null
@@ -47,6 +58,8 @@ export type Brew = {
   dose_g: number
   water_g: number | null
   grind_setting: string | null
+  grinder_id: string | null
+  grind_value: number | null
   water_temp_c: number | null
   time_s: number | null
   rating: number | null

@@ -31,6 +31,18 @@
   variable de ajuste por sugerencia, siempre con explicación.
 - RLS por usuario (`auth.uid() = user_id`), sin households. Fotos en bucket
   privado `brew-photos`, comprimidas en cliente antes de subir.
+- Cola offline (`src/lib/offlineQueue.ts` + `OfflineSyncProvider`): SOLO
+  inserts de brews, UUID generado en cliente como PK (reintento duplicado →
+  23505 = sincronizado). Sincroniza al arrancar y al evento `online`.
+- OCR de etiquetas: tesseract.js SIEMPRE por import dinámico (no engordar el
+  bundle); el parser puro vive en `src/lib/ocrParse.ts` y solo prerellena.
+- Recetas de referencia: catálogo estático `src/lib/referenceRecipes.ts`
+  (mismo patrón que methods); fork = crear/actualizar receta del usuario.
+- Backup: `src/lib/exporter.ts` — el import valida (`validateBackup`),
+  regenera TODOS los ids y remapea FKs (`remapBackup`); nunca insertar el
+  JSON tal cual.
+- Molinillos: traducción de ajustes en `src/lib/grinders.ts`, lineal por
+  rango y SIEMPRE etiquetada como aproximada en la UI.
 
 ## Sistema de diseño (Carta de tostador)
 

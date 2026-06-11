@@ -53,5 +53,5 @@
 ## 8. Offline y cierre
 
 - [x] 8.1 Runtime caching (stale-while-revalidate) para catálogo, recetas y últimos brews; aviso claro al escribir sin conexión y estado del formulario conservado
-- [ ] 8.2 Pasada de QA mobile: ergonomía a una mano, cronómetro con pantalla bloqueada, instalación PWA
+- [x] 8.2 Pasada de QA mobile: ergonomía a una mano, cronómetro con pantalla bloqueada, instalación PWA (verificado por el usuario en dispositivo real, 2026-06-11)
 - [x] 8.3 `pnpm lint && pnpm test && pnpm build` en verde; README con setup y variables de entorno

@@ -20,6 +20,22 @@ convierte cada café en conocimiento reutilizable.
 - **Compartir**: cualquier receta se exporta como tarjeta-imagen (Web Share
   API con fallback a descarga), sin URLs públicas.
 
+### Iteración 2
+
+- **Offline de verdad**: las extracciones sin red se encolan (IndexedDB) y se
+  sincronizan solas al volver la conexión.
+- **Escáner de etiquetas**: OCR en el dispositivo (tesseract.js) que
+  prerellena marca, origen y fecha de tueste.
+- **Inventario predictivo**: cada brew descuenta del paquete; gramos/dosis
+  restantes y «se acaba en ~N días, al ritmo actual».
+- **Molinillos**: perfiles con rango y traducción aproximada de ajustes entre
+  molinillos.
+- **Recetas de referencia**: catálogo de recetas famosas (Hoffmann V60,
+  AeroPress de campeonato…) para usar o forkear.
+- **Comparador A/B**: dos extracciones lado a lado con radar de cata
+  superpuesto.
+- **Backup**: exportar JSON/CSV e importar tu propio backup.
+
 ## Stack
 
 React 19 + Vite + TypeScript + Tailwind 4 (CSS-first) + Supabase (auth magic

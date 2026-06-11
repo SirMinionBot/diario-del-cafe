@@ -1,9 +1,39 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase.ts'
 import { useAuth } from '../hooks/useAuth.ts'
 import { caffeineByDay } from '../lib/caffeine.ts'
 import { monthlySpend, rankByValue, rankCoffees } from '../lib/stats.ts'
+import { brewsToCsv, buildBackup, remapBackup, validateBackup, type BackupV1, type GrinderRow } from '../lib/exporter.ts'
 import type { MethodId } from '../lib/methods.ts'
+import type { Brew, Coffee, CoffeeBag, Recipe } from '../types.ts'
+
+function download(filename: string, content: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+/** Carga TODO lo del usuario para el backup (spec data-export). */
+async function fetchAll(): Promise<Omit<BackupV1, 'version' | 'exportedAt'>> {
+  const [c, b, r, g, w] = await Promise.all([
+    supabase.from('coffees').select('*'),
+    supabase.from('coffee_bags').select('*'),
+    supabase.from('recipes').select('*'),
+    supabase.from('grinders').select('*'),
+    supabase.from('brews').select('*'),
+  ])
+  return {
+    coffees: (c.data as Coffee[] | null) ?? [],
+    coffee_bags: (b.data as CoffeeBag[] | null) ?? [],
+    recipes: (r.data as Recipe[] | null) ?? [],
+    grinders: (g.data as GrinderRow[] | null) ?? [],
+    brews: (w.data as Brew[] | null) ?? [],
+  }
+}
 
 type Snapshot = {
   coffees: { id: string; name: string; price_per_kg: number | null }[]
@@ -158,6 +188,14 @@ export default function Perfil() {
         {shown.length === 0 && <p className="mt-2 text-sm text-ink/60">Valora extracciones para ver tu podio.</p>}
       </div>
 
+      <BackupSection />
+
+      {/* ─── molinillos ─── */}
+      <Link to="/perfil/molinillos" className="card press flex items-center justify-between p-4">
+        <span className="font-medium">⚙️ Mis molinillos</span>
+        <span className="text-ink/40">→</span>
+      </Link>
+
       {/* ─── cuenta ─── */}
       <div className="card p-4">
         <p className="text-sm text-ink/70">Sesión iniciada como</p>
@@ -170,5 +208,89 @@ export default function Perfil() {
         </button>
       </div>
     </section>
+  )
+}
+
+// ─── backup: exportar/importar (spec data-export) ─────────────────────────────
+
+function BackupSection() {
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  async function exportJson() {
+    setBusy(true)
+    const data = await fetchAll()
+    const backup = buildBackup(data, new Date().toISOString())
+    download(`diario-del-cafe-${backup.exportedAt.slice(0, 10)}.json`, JSON.stringify(backup, null, 2), 'application/json')
+    setBusy(false)
+  }
+
+  async function exportCsv() {
+    setBusy(true)
+    const data = await fetchAll()
+    download(`brews-${new Date().toISOString().slice(0, 10)}.csv`, brewsToCsv(data.brews, data.coffees), 'text/csv')
+    setBusy(false)
+  }
+
+  async function importJson(file: File) {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const parsed: unknown = JSON.parse(await file.text())
+      const result = validateBackup(parsed)
+      if (!result.ok) {
+        setMessage(`No se importó nada: ${result.error.field} — ${result.error.detail}`)
+        return
+      }
+      const rows = remapBackup(result.backup, () => crypto.randomUUID())
+      // orden por dependencias; ids regenerados → sin colisiones (design D3)
+      for (const [table, list] of [
+        ['coffees', rows.coffees],
+        ['grinders', rows.grinders],
+        ['coffee_bags', rows.coffee_bags],
+        ['recipes', rows.recipes],
+        ['brews', rows.brews],
+      ] as const) {
+        if (list.length === 0) continue
+        const { error } = await supabase.from(table).insert(list)
+        if (error) throw new Error(`${table}: ${error.message}`)
+      }
+      setMessage(
+        `✓ Importado: ${rows.coffees.length} cafés, ${rows.coffee_bags.length} paquetes, ${rows.recipes.length} recetas, ${rows.grinders.length} molinillos, ${rows.brews.length} extracciones.`,
+      )
+    } catch (e) {
+      setMessage(`Error al importar: ${e instanceof Error ? e.message : 'fichero ilegible'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card p-4">
+      <p className="uppercase text-xs text-copper">tus datos</p>
+      <div className="mt-2 flex gap-2">
+        <button onClick={exportJson} disabled={busy}
+          className="press flex-1 rounded-xl border hairline py-2.5 text-sm font-semibold disabled:opacity-50">
+          ⬇ Backup JSON
+        </button>
+        <button onClick={exportCsv} disabled={busy}
+          className="press flex-1 rounded-xl border hairline py-2.5 text-sm font-semibold disabled:opacity-50">
+          ⬇ Brews CSV
+        </button>
+      </div>
+      <label className={`press mt-2 flex items-center justify-center rounded-xl border hairline py-2.5 text-sm font-semibold ${busy ? 'opacity-50' : ''}`}>
+        ⬆ Importar backup JSON
+        <input type="file" accept="application/json" className="hidden" disabled={busy}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void importJson(f)
+            e.target.value = ''
+          }} />
+      </label>
+      {message && <p className="mt-2 text-xs text-ink/70">{message}</p>}
+      <p className="mt-2 text-[11px] text-ink/45">
+        El backup incluye todos tus datos salvo las fotos. Importar añade (no reemplaza) con ids nuevos.
+      </p>
+    </div>
   )
 }

@@ -1,21 +1,33 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import BrewTimer from '../components/BrewTimer.tsx'
 import { useCoffeeData } from '../hooks/useCoffeeData.ts'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { coffeeForWater, formatRatio, waterForCoffee } from '../lib/ratio.ts'
+import { referenceById } from '../lib/referenceRecipes.ts'
 
 export default function Preparar() {
   const navigate = useNavigate()
   const { coffees, recipes } = useCoffeeData()
+  // «Usar» una receta de referencia precarga método, ratio, dosis y fases (spec reference-recipes)
+  const refState = (useLocation().state as { reference?: string } | null)?.reference
+  const reference = refState ? referenceById(refState) : null
 
-  const [methodId, setMethodId] = useState<MethodId>('espresso')
+  const [methodId, setMethodId] = useState<MethodId>(reference?.methodId ?? 'espresso')
   const [coffeeId, setCoffeeId] = useState<string>('')
   // overrides puntuales del usuario; null = usar receta/defaults (spec ratio-calculator)
-  const [ratioOverride, setRatioOverride] = useState<number | null>(null)
-  const [doseOverride, setDoseOverride] = useState<number | null>(null)
+  const [ratioOverride, setRatioOverride] = useState<number | null>(reference?.ratio ?? null)
+  const [doseOverride, setDoseOverride] = useState<number | null>(reference?.doseG ?? null)
 
-  const method = METHODS[methodId]
+  const baseMethod = METHODS[methodId]
+  // la referencia activa puede aportar sus propias fases al cronómetro
+  const method = useMemo(
+    () =>
+      reference && reference.methodId === methodId && reference.phases
+        ? { ...baseMethod, phases: reference.phases }
+        : baseMethod,
+    [reference, methodId, baseMethod],
+  )
   const recipe = useMemo(
     () => recipes.find((r) => r.coffee_id === coffeeId && r.method === methodId) ?? null,
     [recipes, coffeeId, methodId],
@@ -44,6 +56,12 @@ export default function Preparar() {
         <p className="uppercase text-xs text-copper">diario del café</p>
         <h1 className="mt-1 text-3xl">Preparar</h1>
       </div>
+
+      {reference && (
+        <div className="card border-leaf/40 bg-crema/40 p-3 text-sm">
+          📖 Usando <strong>{reference.name}</strong> ({reference.author})
+        </div>
+      )}
 
       {/* selector de método */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -75,6 +93,10 @@ export default function Preparar() {
           ))}
         </select>
       )}
+
+      <Link to="/referencias" className="press text-center text-xs font-semibold text-copper">
+        📖 Recetas de referencia →
+      </Link>
 
       {/* calculadora inversa */}
       <div className="card p-4">

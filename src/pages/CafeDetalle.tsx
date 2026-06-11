@@ -1,12 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.ts'
+import LabelScanner from '../components/LabelScanner.tsx'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { formatRatio, waterForCoffee } from '../lib/ratio.ts'
 import { shareRecipeCard } from '../lib/shareCard.ts'
 import { daysSinceRoast, freshnessState, FRESHNESS_LABEL } from '../lib/freshness.ts'
 import { aggregateTastings, parseTasting, type TastingProfile } from '../lib/tasting.ts'
-import type { Coffee, CoffeeBag, Recipe } from '../types.ts'
+import { predictEndDate, remainingDoses, remainingG } from '../lib/inventory.ts'
+import type { Coffee, CoffeeBag, Grinder, Recipe } from '../types.ts'
+
+type BrewLight = { bag_id: string | null; dose_g: number; brewed_at: string; tasting: unknown }
 
 const input = 'card mt-1 w-full px-3 py-2.5 text-base'
 const label = 'text-xs text-ink/60'
@@ -59,6 +63,8 @@ export default function CafeDetalle() {
   const [form, setForm] = useState<CoffeeForm>(emptyForm)
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [bags, setBags] = useState<CoffeeBag[]>([])
+  const [brews, setBrews] = useState<BrewLight[]>([])
+  const [grinders, setGrinders] = useState<Grinder[]>([])
   const [profile, setProfile] = useState<TastingProfile | null>(null)
   const [saving, setSaving] = useState(false)
   const today = new Date().toISOString().slice(0, 10)
@@ -70,16 +76,18 @@ export default function CafeDetalle() {
       supabase.from('coffees').select('*').eq('id', id).single(),
       supabase.from('recipes').select('*').eq('coffee_id', id),
       supabase.from('coffee_bags').select('*').eq('coffee_id', id).order('roast_date', { ascending: false }),
-      supabase.from('brews').select('tasting').eq('coffee_id', id).not('tasting', 'is', null),
-    ]).then(([c, r, b, t]) => {
+      supabase.from('brews').select('bag_id, dose_g, brewed_at, tasting').eq('coffee_id', id),
+      supabase.from('grinders').select('*').order('name'),
+    ]).then(([c, r, b, w, g]) => {
       if (cancelled) return
       if (c.data) setForm(toForm(c.data as Coffee))
       setRecipes((r.data as Recipe[] | null) ?? [])
       setBags((b.data as CoffeeBag[] | null) ?? [])
+      setGrinders((g.data as Grinder[] | null) ?? [])
+      const allBrews = (w.data as BrewLight[] | null) ?? []
+      setBrews(allBrews)
       // perfil sensorial: solo catas que pasan el validador (spec tasting-notes)
-      const tastings = ((t.data as { tasting: unknown }[] | null) ?? [])
-        .map((row) => parseTasting(row.tasting))
-        .filter((x) => x !== null)
+      const tastings = allBrews.map((row) => parseTasting(row.tasting)).filter((x) => x !== null)
       setProfile(aggregateTastings(tastings))
     })
     return () => {
@@ -112,6 +120,18 @@ export default function CafeDetalle() {
 
       {/* ─── ficha del café ─── */}
       <form onSubmit={saveCoffee} className="card mt-4 flex flex-col gap-3 p-4">
+        {isNew && (
+          <LabelScanner
+            onResult={(p) =>
+              setForm((f) => ({
+                ...f,
+                name: p.name ?? f.name,
+                roaster: p.roaster ?? f.roaster,
+                origin: p.origin ?? f.origin,
+              }))
+            }
+          />
+        )}
         <label>
           <span className={label}>Nombre *</span>
           <input
@@ -212,8 +232,8 @@ export default function CafeDetalle() {
               )}
             </div>
           )}
-          <RecipesSection coffeeId={id!} coffeeName={form.name} recipes={recipes} onChange={setRecipes} />
-          <BagsSection coffeeId={id!} bags={bags} onChange={setBags} today={today} />
+          <RecipesSection coffeeId={id!} coffeeName={form.name} recipes={recipes} grinders={grinders} onChange={setRecipes} />
+          <BagsSection coffeeId={id!} bags={bags} brews={brews} onChange={setBags} today={today} />
 
           <button
             onClick={archiveCoffee}
@@ -233,15 +253,17 @@ function RecipesSection({
   coffeeId,
   coffeeName,
   recipes,
+  grinders,
   onChange,
 }: {
   coffeeId: string
   coffeeName: string
   recipes: Recipe[]
+  grinders: Grinder[]
   onChange: (r: Recipe[]) => void
 }) {
   const [editing, setEditing] = useState<MethodId | null>(null)
-  const [draft, setDraft] = useState({ ratio: '', dose_g: '', grind_setting: '', water_temp_c: '', target_time_s: '' })
+  const [draft, setDraft] = useState({ ratio: '', dose_g: '', grind_setting: '', grinder_id: '', grind_value: '', water_temp_c: '', target_time_s: '' })
 
   function startEdit(methodId: MethodId) {
     const existing = recipes.find((r) => r.method === methodId)
@@ -250,6 +272,8 @@ function RecipesSection({
       ratio: (existing?.ratio ?? m.ratio).toString(),
       dose_g: (existing?.dose_g ?? m.defaultDoseG).toString(),
       grind_setting: existing?.grind_setting ?? '',
+      grinder_id: existing?.grinder_id ?? '',
+      grind_value: existing?.grind_value?.toString() ?? '',
       water_temp_c: (existing?.water_temp_c ?? m.waterTempC).toString(),
       target_time_s: existing?.target_time_s?.toString() ?? '',
     })
@@ -265,6 +289,8 @@ function RecipesSection({
       ratio: Number(draft.ratio),
       dose_g: Number(draft.dose_g),
       grind_setting: draft.grind_setting.trim() || null,
+      grinder_id: draft.grinder_id || null,
+      grind_value: draft.grind_value ? Number(draft.grind_value) : null,
       water_temp_c: draft.water_temp_c ? Number(draft.water_temp_c) : null,
       target_time_s: draft.target_time_s ? Number(draft.target_time_s) : null,
       updated_at: new Date().toISOString(),
@@ -343,6 +369,25 @@ function RecipesSection({
                         onChange={(e) => setDraft({ ...draft, dose_g: e.target.value })} className={input} data-numeric />
                     </label>
                   </div>
+                  {grinders.length > 0 && (
+                    <div className="mt-2 flex gap-2">
+                      <label className="flex-1">
+                        <span className={label}>Molinillo</span>
+                        <select value={draft.grinder_id}
+                          onChange={(e) => setDraft({ ...draft, grinder_id: e.target.value })} className={input}>
+                          <option value="">—</option>
+                          {grinders.map((g) => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="w-20">
+                        <span className={label}>Ajuste</span>
+                        <input type="number" inputMode="decimal" step="0.5" value={draft.grind_value}
+                          onChange={(e) => setDraft({ ...draft, grind_value: e.target.value })} className={input} data-numeric />
+                      </label>
+                    </div>
+                  )}
                   <div className="mt-2 flex gap-2">
                     <label className="flex-1">
                       <span className={label}>Molienda</span>
@@ -396,11 +441,13 @@ const FRESHNESS_COLOR = {
 function BagsSection({
   coffeeId,
   bags,
+  brews,
   onChange,
   today,
 }: {
   coffeeId: string
   bags: CoffeeBag[]
+  brews: BrewLight[]
   onChange: (b: CoffeeBag[]) => void
   today: string
 }) {
@@ -435,7 +482,14 @@ function BagsSection({
       </div>
 
       {adding && (
-        <form onSubmit={addBag} className="mt-2 flex items-end gap-2 rounded-lg bg-crema/40 p-3">
+        <form onSubmit={addBag} className="mt-2 flex flex-wrap items-end gap-2 rounded-lg bg-crema/40 p-3">
+          <div className="w-full">
+            <LabelScanner
+              onResult={(p) => {
+                if (p.roastDate) setDraft((d) => ({ ...d, roast_date: p.roastDate! }))
+              }}
+            />
+          </div>
           <label className="flex-1">
             <span className={label}>Fecha de tueste</span>
             <input type="date" required max={today} value={draft.roast_date}
@@ -460,15 +514,31 @@ function BagsSection({
         {active.map((bag) => {
           const days = daysSinceRoast(bag.roast_date, today)
           const state = freshnessState(days, 'filtro')
+          // inventario vivo derivado de los brews del paquete (delta coffee-inventory)
+          const bagBrews = brews
+            .filter((b) => b.bag_id === bag.id)
+            .map((b) => ({ doseG: b.dose_g, brewedAt: b.brewed_at }))
+          const remaining = remainingG(bag.weight_g, bagBrews)
+          const avgDose = bagBrews.length
+            ? bagBrews.reduce((s, b) => s + b.doseG, 0) / bagBrews.length
+            : null
+          const doses = avgDose ? remainingDoses(remaining, avgDose) : null
+          const prediction = predictEndDate(bag.weight_g, bagBrews, today)
           return (
             <li key={bag.id} className="flex items-center justify-between border-b hairline py-2 last:border-b-0">
               <div>
                 <p className="text-sm font-medium" data-numeric>
-                  {bag.weight_g} g · tueste {bag.roast_date}
+                  {remaining} g de {bag.weight_g} · tueste {bag.roast_date}
                 </p>
                 <p className={`text-xs font-semibold ${FRESHNESS_COLOR[state]}`}>
                   {FRESHNESS_LABEL[state]} · día {days}
                 </p>
+                {doses !== null && (
+                  <p className="text-xs text-ink/55" data-numeric>
+                    ~{doses} dosis restantes
+                    {prediction && <> · se acaba en ~{prediction.daysLeft} día{prediction.daysLeft === 1 ? '' : 's'}, al ritmo actual</>}
+                  </p>
+                )}
               </div>
               <div className="flex gap-1.5">
                 {!bag.opened_at && (
