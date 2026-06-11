@@ -36,6 +36,14 @@ convierte cada café en conocimiento reutilizable.
   superpuesto.
 - **Backup**: exportar JSON/CSV e importar tu propio backup.
 
+#### Ejemplo de importación
+
+`examples/import-cafes-incapto-sierra-segura.json` es un backup v1 de ejemplo
+con 33 cafés reales (gama completa de Incapto Coffee y de Cafés Sierra Segura,
+investigada en junio de 2026). Para cargarlo: **Perfil → ⬆ Importar backup
+JSON**. El import valida el fichero, regenera los ids y lo asocia a tu cuenta;
+importar dos veces duplica (añade, no reemplaza).
+
 ## Stack
 
 React 19 + Vite + TypeScript + Tailwind 4 (CSS-first) + Supabase (auth magic
