@@ -55,5 +55,10 @@
 - Utilidades propias: `card` (hairline + radio 0.75rem), `hairline`, `press`
   (scale al pulsar), `pulse-soft`. Cambiar la estética = tocar
   `src/index.css`, no las pantallas.
+- Tema oscuro: bloque `[data-theme='dark']` de tokens en `src/index.css`;
+  lo aplica `ThemeProvider` (único, en App) vía `useTheme` con persistencia
+  y `prefers-color-scheme`. NUNCA usar variantes `dark:` por utilidad.
+- Radar sensorial: geometría compartida en `src/lib/radar.ts` — el SVG del
+  comparador y el canvas de la tarjeta de cata deben pintar idéntico.
 - Mobile-first estricto: layout max-w-md, navegación inferior de 4 secciones
   (Preparar / Cafés / Diario / Perfil), targets táctiles generosos.

@@ -28,6 +28,35 @@
   --shadow-soft-lg: 0 4px 16px rgb(43 33 27 / 0.08);
 }
 
+/* tema oscuro (spec dark-mode): SOLO tokens — papel espresso profundo, tinta
+   crema, acentos avivados para mantener contraste. Lo aplica useTheme con
+   data-theme en <html>; sin tocar pantallas. */
+[data-theme='dark'] {
+  --color-paper: #1d1713;
+  --color-card: #261e19;
+  --color-ink: #ece2d3;
+  --color-crema: #3a2d23;
+  --color-caramel: #c08a52;
+  --color-copper: #d09a62;
+  --color-leaf: #8fa37f;
+  --color-warn: #d6a544;
+  --color-danger: #d06a55;
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-soft-lg: 0 4px 16px rgb(0 0 0 / 0.5);
+}
+
+[data-theme='dark'] .card {
+  border-color: rgb(236 226 211 / 0.14);
+}
+
+[data-theme='dark'] :where(.hairline) {
+  border-color: rgb(236 226 211 / 0.14);
+}
+
+[data-theme='dark'] :where(.border-ink) {
+  border-color: rgb(236 226 211 / 0.16);
+}
+
 @layer base {
   body {
     background-color: var(--color-paper);

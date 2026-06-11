@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { monthlySpend, rankByValue, rankCoffees } from './stats.ts'
+import { brewCostEur, costByCoffee, monthlySpend, rankByValue, rankCoffees } from './stats.ts'
 
 const coffees = [
   { id: 'a', name: 'Etiopía Natural', pricePerKg: 18 },
@@ -33,6 +33,42 @@ describe('monthlySpend (spec consumption-stats)', () => {
     )
     expect(spend.totalEur).toBe(6)
     expect(spend.excludedBags).toBe(1)
+  })
+})
+
+describe('brewCostEur (delta consumption-stats)', () => {
+  it('escenario de la spec: 18 g a 21 €/kg → 0,38 €', () => {
+    expect(brewCostEur(21, 18)).toBe(0.38)
+  })
+
+  it('sin precio o dosis inválida → null', () => {
+    expect(brewCostEur(null, 18)).toBeNull()
+    expect(brewCostEur(0, 18)).toBeNull()
+    expect(brewCostEur(21, 0)).toBeNull()
+  })
+
+  it('redondea a céntimos', () => {
+    expect(brewCostEur(130, 18)).toBe(2.34)
+    expect(brewCostEur(17.1, 15)).toBe(0.26)
+  })
+})
+
+describe('costByCoffee (delta consumption-stats)', () => {
+  it('tazas, coste medio y total por café, ordenado por medio desc', () => {
+    const r = costByCoffee(coffees, [
+      { coffeeId: 'a', doseG: 18 }, // 18 €/kg → 0.324
+      { coffeeId: 'a', doseG: 18 },
+      { coffeeId: 'b', doseG: 15 }, // 12 €/kg → 0.18
+    ])
+    expect(r.rows[0]).toEqual({ coffeeId: 'a', name: 'Etiopía Natural', cups: 2, avgEur: 0.32, totalEur: 0.65 })
+    expect(r.rows[1]).toMatchObject({ coffeeId: 'b', cups: 1, avgEur: 0.18 })
+    expect(r.excludedCoffees).toBe(0)
+  })
+
+  it('cafés sin precio con extracciones quedan excluidos y contados', () => {
+    const r = costByCoffee(coffees, [{ coffeeId: 'c', doseG: 18 }])
+    expect(r.rows).toHaveLength(0)
+    expect(r.excludedCoffees).toBe(1)
   })
 })
 

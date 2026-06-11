@@ -1,24 +1,99 @@
-import { useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import BrewTimer from '../components/BrewTimer.tsx'
 import CoffeeSelect from '../components/CoffeeSelect.tsx'
 import { useCoffeeData } from '../hooks/useCoffeeData.ts'
+import { supabase } from '../lib/supabase.ts'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
-import { coffeeForWater, formatRatio, waterForCoffee } from '../lib/ratio.ts'
+import { coffeeForWater, formatRatio, ratioFor, waterForCoffee } from '../lib/ratio.ts'
 import { referenceById } from '../lib/referenceRecipes.ts'
+import { daysSinceRoast, freshnessState } from '../lib/freshness.ts'
+import type { Brew, CoffeeBag } from '../types.ts'
+
+type LastBrew = Pick<
+  Brew,
+  'coffee_id' | 'bag_id' | 'method' | 'dose_g' | 'water_g' | 'grind_setting' | 'grinder_id' | 'grind_value'
+>
+
+/** extras del último brew que no viven en Preparar pero viajan al registro */
+type RepeatExtras = Pick<LastBrew, 'bag_id' | 'grind_setting' | 'grinder_id' | 'grind_value'>
+
+/** Paquete abierto más fresco en ventana óptima (mismo criterio que BrewNueva). */
+function activeBagFor(bags: CoffeeBag[], coffeeId: string, today: string): string | null {
+  const candidates = bags
+    .filter((b) => b.coffee_id === coffeeId && b.opened_at !== null)
+    .filter((b) => freshnessState(daysSinceRoast(b.roast_date, today), 'filtro') === 'optimo')
+    .sort((a, b) => b.roast_date.localeCompare(a.roast_date))
+  return candidates[0]?.id ?? null
+}
 
 export default function Preparar() {
   const navigate = useNavigate()
-  const { coffees, recipes } = useCoffeeData()
+  const { coffees, recipes, bags } = useCoffeeData()
+  const today = new Date().toISOString().slice(0, 10)
   // «Usar» una receta de referencia precarga método, ratio, dosis y fases (spec reference-recipes)
   const refState = (useLocation().state as { reference?: string } | null)?.reference
   const reference = refState ? referenceById(refState) : null
+  // shortcut PWA «Repetir último» (spec quick-repeat); se consume UNA vez
+  const [searchParams] = useSearchParams()
+  const autoRepeat = useRef(searchParams.get('repetir') === '1')
 
   const [methodId, setMethodId] = useState<MethodId>(reference?.methodId ?? 'espresso')
   const [coffeeId, setCoffeeId] = useState<string>('')
   // overrides puntuales del usuario; null = usar receta/defaults (spec ratio-calculator)
   const [ratioOverride, setRatioOverride] = useState<number | null>(reference?.ratio ?? null)
   const [doseOverride, setDoseOverride] = useState<number | null>(reference?.doseG ?? null)
+
+  // ─── repetir última extracción (spec quick-repeat) ───
+  const [lastBrew, setLastBrew] = useState<LastBrew | null>(null)
+  const [repeatExtras, setRepeatExtras] = useState<RepeatExtras | null>(null)
+  const [repeatMsg, setRepeatMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase
+      .from('brews')
+      .select('coffee_id, bag_id, method, dose_g, water_g, grind_setting, grinder_id, grind_value')
+      .order('brewed_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (!cancelled) setLastBrew((data?.[0] as LastBrew | undefined) ?? null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  function applyRepeat(brew: LastBrew) {
+    const coffee = coffees.find((c) => c.id === brew.coffee_id)
+    if (!coffee) {
+      setRepeatMsg('No se pudo repetir: el café de la última extracción ya no está en tu catálogo.')
+      return
+    }
+    setMethodId(brew.method)
+    setCoffeeId(brew.coffee_id)
+    setDoseOverride(brew.dose_g)
+    setRatioOverride(brew.water_g ? ratioFor(brew.dose_g, brew.water_g) : null)
+    const bagAlive = brew.bag_id !== null && bags.some((b) => b.id === brew.bag_id)
+    setRepeatExtras({
+      bag_id: bagAlive ? brew.bag_id : null,
+      grind_setting: brew.grind_setting,
+      grinder_id: brew.grinder_id,
+      grind_value: brew.grind_value,
+    })
+    setRepeatMsg(
+      `↻ Precargado: ${coffee.name} · ${brew.dose_g} g${brew.grind_setting ? ` · ${brew.grind_setting}` : ''}` +
+        (brew.bag_id && !bagAlive ? ' (paquete ya terminado, omitido)' : ''),
+    )
+  }
+
+  // shortcut: aplicar una sola vez cuando los datos están listos
+  useEffect(() => {
+    if (!autoRepeat.current || !lastBrew || coffees.length === 0) return
+    autoRepeat.current = false
+    void Promise.resolve().then(() => applyRepeat(lastBrew))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- aplicar solo al estar listos
+  }, [lastBrew, coffees])
 
   const baseMethod = METHODS[methodId]
   // la referencia activa puede aportar sus propias fases al cronómetro
@@ -62,6 +137,20 @@ export default function Preparar() {
         <div className="card border-leaf/40 bg-crema/40 p-3 text-sm">
           📖 Usando <strong>{reference.name}</strong> ({reference.author})
         </div>
+      )}
+
+      {/* repetir el caso más frecuente con un toque (spec quick-repeat) */}
+      {lastBrew && !repeatMsg && (
+        <button
+          onClick={() => applyRepeat(lastBrew)}
+          className="card press p-3 text-left text-sm font-semibold text-copper"
+        >
+          ↻ Repetir último: {coffees.find((c) => c.id === lastBrew.coffee_id)?.name ?? 'café archivado'} ·{' '}
+          <span data-numeric>{lastBrew.dose_g} g</span>
+        </button>
+      )}
+      {repeatMsg && (
+        <div className="card border-copper/40 bg-crema/40 p-3 text-sm">{repeatMsg}</div>
       )}
 
       {/* selector de método */}
@@ -181,6 +270,11 @@ export default function Preparar() {
               doseG,
               waterG,
               timeS,
+              // del repetir viajan molienda/molinillo/paquete; si no, paquete óptimo
+              bagId: repeatExtras?.bag_id ?? (coffeeId ? activeBagFor(bags, coffeeId, today) : null),
+              grind: repeatExtras?.grind_setting ?? null,
+              grinderId: repeatExtras?.grinder_id ?? null,
+              grindValue: repeatExtras?.grind_value ?? null,
             },
           })
         }

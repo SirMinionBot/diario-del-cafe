@@ -4,51 +4,41 @@ import { supabase } from '../lib/supabase.ts'
 import { METHODS } from '../lib/methods.ts'
 import { formatRatio, ratioFor } from '../lib/ratio.ts'
 import { formatTime } from '../lib/timer.ts'
-import { parseTasting, TASTING_AXES, type Tasting } from '../lib/tasting.ts'
+import { parseTasting, type Tasting } from '../lib/tasting.ts'
+import { axisPoint, RADAR_AXIS_LABELS, ringPolygon, tastingPolygon, type Point } from '../lib/radar.ts'
 import type { Brew, Coffee } from '../types.ts'
 
 const COLOR_A = '#a9703d' // caramelo
 const COLOR_B = '#65775a' // hoja
 
-/** Radar SVG de 4 ejes con hasta dos perfiles superpuestos (spec brew-compare). */
+const toSvg = (pts: Point[]) => pts.map((p) => `${p.x},${p.y}`).join(' ')
+
+/** Radar SVG con la geometría compartida de lib/radar.ts (spec brew-compare). */
 function Radar({ a, b }: { a: Tasting | null; b: Tasting | null }) {
   const size = 220
   const c = size / 2
   const r = 80
-  // acidez arriba, cuerpo derecha, dulzor abajo, amargor izquierda
-  const angles = [-90, 0, 90, 180].map((deg) => (deg * Math.PI) / 180)
-  const point = (axis: number, value: number) =>
-    `${c + Math.cos(angles[axis]) * r * (value / 5)},${c + Math.sin(angles[axis]) * r * (value / 5)}`
-  const polygon = (t: Tasting) => TASTING_AXES.map((ax, i) => point(i, t[ax])).join(' ')
-  const labels = ['acidez', 'cuerpo', 'dulzor', 'amargor']
-  const labelPos = [
-    { x: c, y: c - r - 12, anchor: 'middle' },
-    { x: c + r + 10, y: c + 4, anchor: 'start' },
-    { x: c, y: c + r + 20, anchor: 'middle' },
-    { x: c - r - 10, y: c + 4, anchor: 'end' },
-  ]
   return (
     <svg viewBox={`0 0 ${size} ${size}`} className="mx-auto w-full max-w-60">
       {[1, 2, 3, 4, 5].map((ring) => (
-        <polygon
-          key={ring}
-          points={TASTING_AXES.map((_, i) => point(i, ring)).join(' ')}
-          fill="none"
-          stroke="rgba(43,33,27,0.1)"
-        />
+        <polygon key={ring} points={toSvg(ringPolygon(ring, c, c, r))} fill="none" stroke="rgba(43,33,27,0.1)" />
       ))}
-      {angles.map((ang, i) => (
-        <line key={i} x1={c} y1={c} x2={c + Math.cos(ang) * r} y2={c + Math.sin(ang) * r}
-          stroke="rgba(43,33,27,0.15)" />
-      ))}
-      {a && <polygon points={polygon(a)} fill={`${COLOR_A}55`} stroke={COLOR_A} strokeWidth="2" />}
-      {b && <polygon points={polygon(b)} fill={`${COLOR_B}55`} stroke={COLOR_B} strokeWidth="2" />}
-      {labels.map((l, i) => (
-        <text key={l} x={labelPos[i].x} y={labelPos[i].y} textAnchor={labelPos[i].anchor as 'middle'}
-          className="fill-ink/60" fontSize="11">
-          {l}
-        </text>
-      ))}
+      {RADAR_AXIS_LABELS.map((_, i) => {
+        const tip = axisPoint(i, 5, c, c, r)
+        return <line key={i} x1={c} y1={c} x2={tip.x} y2={tip.y} stroke="rgba(43,33,27,0.15)" />
+      })}
+      {a && <polygon points={toSvg(tastingPolygon(a, c, c, r))} fill={`${COLOR_A}55`} stroke={COLOR_A} strokeWidth="2" />}
+      {b && <polygon points={toSvg(tastingPolygon(b, c, c, r))} fill={`${COLOR_B}55`} stroke={COLOR_B} strokeWidth="2" />}
+      {RADAR_AXIS_LABELS.map((l, i) => {
+        const tip = axisPoint(i, 5, c, c, r)
+        return (
+          <text key={l.label} x={tip.x + l.dx * 10} y={tip.y + l.dy * 16 + 4}
+            textAnchor={l.dx > 0 ? 'start' : l.dx < 0 ? 'end' : 'middle'}
+            className="fill-ink/60" fontSize="11">
+            {l.label}
+          </text>
+        )
+      })}
     </svg>
   )
 }

@@ -32,6 +32,7 @@ export default defineConfig(() => {
             { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
           shortcuts: [
+            { name: 'Repetir último', url: `${base}?repetir=1`, icons: [{ src: 'pwa-192.png', sizes: '192x192' }] },
             { name: 'Preparar', url: base, icons: [{ src: 'pwa-192.png', sizes: '192x192' }] },
             { name: 'Diario', url: `${base}diario`, icons: [{ src: 'pwa-192.png', sizes: '192x192' }] },
           ],

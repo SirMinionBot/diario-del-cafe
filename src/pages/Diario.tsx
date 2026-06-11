@@ -4,6 +4,11 @@ import { supabase } from '../lib/supabase.ts'
 import { useOfflineSync } from '../hooks/useOfflineSync.ts'
 import { openBrewQueue, type PendingBrew } from '../lib/offlineQueue.ts'
 import CoffeeSelect from '../components/CoffeeSelect.tsx'
+import { brewCostEur } from '../lib/stats.ts'
+import { shareBrewCard } from '../lib/shareCard.ts'
+import { parseTasting } from '../lib/tasting.ts'
+
+const eur = (n: number) => `${n.toFixed(2).replace('.', ',')} €`
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { formatRatio, ratioFor } from '../lib/ratio.ts'
 import { formatTime } from '../lib/timer.ts'
@@ -184,6 +189,8 @@ export default function Diario() {
         {filtered.map((brew) => {
           const ratio = brew.water_g ? ratioFor(brew.dose_g, brew.water_g) : null
           const isSelected = selected.includes(brew.id)
+          // coste derivado al vuelo (delta brew-log / consumption-stats)
+          const cost = brewCostEur(coffeeById.get(brew.coffee_id)?.price_per_kg ?? null, brew.dose_g)
           return (
             <li
               key={brew.id}
@@ -221,6 +228,7 @@ export default function Diario() {
                   {METHODS[brew.method]?.name ?? brew.method} · {brew.dose_g} g
                   {ratio && <> · {formatRatio(ratio)}</>}
                   {brew.time_s && <> · {formatTime(brew.time_s)}</>}
+                  {cost !== null && <> · {eur(cost)}</>}
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-xs">
                   {brew.rating && <span>{'⭐'.repeat(brew.rating)}</span>}
@@ -232,6 +240,28 @@ export default function Diario() {
                 </div>
                 {brew.notes && <p className="mt-1 truncate text-xs text-ink/50">{brew.notes}</p>}
               </div>
+              {!compareMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void shareBrewCard({
+                      coffeeName: coffeeName.get(brew.coffee_id) ?? 'Café',
+                      methodName: METHODS[brew.method]?.name ?? brew.method,
+                      doseG: brew.dose_g,
+                      waterG: brew.water_g,
+                      ratio,
+                      timeS: brew.time_s,
+                      rating: brew.rating,
+                      dateIso: brew.brewed_at,
+                      tasting: parseTasting(brew.tasting),
+                    })
+                  }}
+                  className="press shrink-0 self-center text-lg"
+                  aria-label="Compartir tarjeta de esta extracción"
+                >
+                  📤
+                </button>
+              )}
             </li>
           )
         })}

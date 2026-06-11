@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase.ts'
 import { useAuth } from '../hooks/useAuth.ts'
+import { useThemeMode } from '../hooks/useThemeMode.ts'
+import type { ThemeMode } from '../hooks/useTheme.ts'
 import { caffeineByDay } from '../lib/caffeine.ts'
-import { monthlySpend, rankByValue, rankCoffees } from '../lib/stats.ts'
+import { costByCoffee, monthlySpend, rankByValue, rankCoffees } from '../lib/stats.ts'
 import { brewsToCsv, buildBackup, remapBackup, validateBackup, type BackupV1, type GrinderRow } from '../lib/exporter.ts'
 import type { MethodId } from '../lib/methods.ts'
 import type { Brew, Coffee, CoffeeBag, Recipe } from '../types.ts'
@@ -96,6 +98,15 @@ export default function Perfil() {
   const unratedCount = rankMode === 'rating' ? ranked.length - shown.length : 0
   const roasterOf = new Map(snap?.coffees.map((c) => [c.id, c.roaster]) ?? [])
 
+  // coste por taza, siempre derivado (delta consumption-stats)
+  const cost = snap
+    ? costByCoffee(
+        snap.coffees.map((c) => ({ id: c.id, name: c.name, pricePerKg: c.price_per_kg })),
+        snap.brews.map((b) => ({ coffeeId: b.coffee_id, doseG: b.dose_g })),
+      )
+    : null
+  const eur = (n: number) => `${n.toFixed(2).replace('.', ',')} €`
+
   return (
     <section className="flex flex-col gap-4">
       <div>
@@ -151,6 +162,29 @@ export default function Perfil() {
         )}
       </div>
 
+      {/* ─── coste por taza (delta consumption-stats) ─── */}
+      {cost && cost.rows.length > 0 && (
+        <div className="card p-4">
+          <p className="uppercase text-xs text-copper">coste por taza</p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {cost.rows.map((c) => (
+              <li key={c.coffeeId} className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="truncate">{c.name}</span>
+                <span className="shrink-0" data-numeric>
+                  {eur(c.avgEur)}/taza
+                  <span className="ml-1 text-xs text-ink/40">({c.cups} · {eur(c.totalEur)})</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {cost.excludedCoffees > 0 && (
+            <p className="mt-2 text-[11px] text-ink/45" data-numeric>
+              {cost.excludedCoffees} café{cost.excludedCoffees === 1 ? '' : 's'} con tazas pero sin precio, fuera de la comparativa.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ─── ranking de cafés (spec brand-ranking) ─── */}
       <div className="card p-4">
         <div className="flex items-center justify-between">
@@ -198,6 +232,8 @@ export default function Perfil() {
         {shown.length === 0 && <p className="mt-2 text-sm text-ink/60">Valora extracciones para ver tu podio.</p>}
       </div>
 
+      <ThemeSection />
+
       <BackupSection />
 
       {/* ─── molinillos ─── */}
@@ -218,6 +254,31 @@ export default function Perfil() {
         </button>
       </div>
     </section>
+  )
+}
+
+// ─── tema (spec dark-mode) ─────────────────────────────────────────────────────
+
+const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'light', label: '☀️ Claro' },
+  { value: 'dark', label: '🌙 Oscuro' },
+]
+
+function ThemeSection() {
+  const { mode, set } = useThemeMode()
+  return (
+    <div className="card flex items-center justify-between p-4">
+      <p className="font-medium">Tema</p>
+      <div className="flex rounded-lg bg-crema/60 p-0.5 text-xs font-semibold">
+        {THEME_OPTIONS.map((o) => (
+          <button key={o.value} onClick={() => set(o.value)}
+            className={`press rounded-md px-2.5 py-1.5 ${mode === o.value ? 'bg-card' : 'text-ink/50'}`}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 

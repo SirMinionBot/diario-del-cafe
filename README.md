@@ -34,7 +34,17 @@ convierte cada café en conocimiento reutilizable.
   AeroPress de campeonato…) para usar o forkear.
 - **Comparador A/B**: dos extracciones lado a lado con radar de cata
   superpuesto.
-- **Backup**: exportar JSON/CSV e importar tu propio backup.
+- **Backup**: exportar JSON/CSV e importar tu propio backup (añadir o reemplazar).
+
+### Iteración 3
+
+- **Repetir último** con un toque (botón en Preparar + shortcut PWA): precarga
+  café, paquete, dosis, ratio y molienda de la última extracción.
+- **Coste por taza**: derivado de precio/kg × dosis — visible en cada entrada
+  del diario y comparativa por café en Perfil.
+- **Tarjeta de cata compartible**: una extracción como imagen con su radar
+  sensorial, desde el diario.
+- **Modo oscuro**: auto/claro/oscuro en Perfil; solo tokens CSS.
 
 #### Ejemplo de importación
 

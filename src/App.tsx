@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Routes, Route } from 'react-router-dom'
 import AuthProvider from './components/AuthProvider.tsx'
 import OfflineSyncProvider from './components/OfflineSyncProvider.tsx'
+import ThemeProvider from './components/ThemeProvider.tsx'
 import Layout from './components/Layout.tsx'
 import { useAuth } from './hooks/useAuth.ts'
 import Acceso from './pages/Acceso.tsx'
@@ -23,6 +24,7 @@ function RequireAuth() {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <OfflineSyncProvider>
       <Routes>
@@ -43,5 +45,6 @@ export default function App() {
       </Routes>
       </OfflineSyncProvider>
     </AuthProvider>
+    </ThemeProvider>
   )
 }

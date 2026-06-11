@@ -62,6 +62,62 @@ export function monthlySpend(
   }
 }
 
+// ─── coste por taza (delta consumption-stats, iteración 3) ───────────────────
+
+export type BrewForCost = {
+  coffeeId: string
+  doseG: number
+}
+
+/** Coste de una extracción en euros, a céntimos; null sin precio o dosis inválida. */
+export function brewCostEur(pricePerKg: number | null, doseG: number): number | null {
+  if (!pricePerKg || pricePerKg <= 0 || doseG <= 0) return null
+  return Math.round((pricePerKg * doseG) / 10) / 100
+}
+
+export type CoffeeCost = {
+  coffeeId: string
+  name: string
+  cups: number
+  avgEur: number
+  totalEur: number
+}
+
+export type CostByCoffee = {
+  rows: CoffeeCost[]
+  /** cafés con extracciones pero sin precio, fuera de la comparativa */
+  excludedCoffees: number
+}
+
+/** Comparativa de coste por café, ordenada por coste medio descendente. */
+export function costByCoffee(coffees: CoffeeForStats[], brews: BrewForCost[]): CostByCoffee {
+  const byId = new Map(coffees.map((c) => [c.id, c]))
+  const grouped = new Map<string, number[]>()
+  for (const b of brews) {
+    grouped.set(b.coffeeId, [...(grouped.get(b.coffeeId) ?? []), b.doseG])
+  }
+  const rows: CoffeeCost[] = []
+  let excludedCoffees = 0
+  for (const [coffeeId, doses] of grouped) {
+    const coffee = byId.get(coffeeId)
+    if (!coffee) continue
+    if (!coffee.pricePerKg) {
+      excludedCoffees++
+      continue
+    }
+    const totalRaw = doses.reduce((s, d) => s + (coffee.pricePerKg! * d) / 1000, 0)
+    rows.push({
+      coffeeId,
+      name: coffee.name,
+      cups: doses.length,
+      avgEur: Math.round((totalRaw / doses.length) * 100) / 100,
+      totalEur: Math.round(totalRaw * 100) / 100,
+    })
+  }
+  rows.sort((a, b) => b.avgEur - a.avgEur)
+  return { rows, excludedCoffees }
+}
+
 // ─── ranking de cafés ─────────────────────────────────────────────────────────
 
 export type RankedCoffee = {

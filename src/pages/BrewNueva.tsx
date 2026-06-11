@@ -26,7 +26,7 @@ function preselectBag(bags: CoffeeBag[], coffeeId: string, today: string): strin
 const input = 'card mt-1 w-full px-3 py-2.5 text-base'
 const label = 'text-xs text-ink/60'
 
-/** estado precargado desde el cronómetro (task 4.4) */
+/** estado precargado desde el cronómetro (y desde «repetir último», spec quick-repeat) */
 type PrefillState = {
   method?: MethodId
   coffeeId?: string | null
@@ -34,6 +34,10 @@ type PrefillState = {
   doseG?: number
   waterG?: number
   timeS?: number
+  bagId?: string | null
+  grind?: string | null
+  grinderId?: string | null
+  grindValue?: number | null
 }
 
 const TASTE_OPTIONS: { value: TasteLabel; label: string }[] = [
@@ -59,9 +63,9 @@ export default function BrewNueva() {
 
   const [methodId, setMethodId] = useState<MethodId>(prefill.method ?? 'espresso')
   const [coffeeId, setCoffeeId] = useState(prefill.coffeeId ?? '')
-  const [bagId, setBagId] = useState('')
-  const [grinderId, setGrinderId] = useState('')
-  const [grindValue, setGrindValue] = useState('')
+  const [bagId, setBagId] = useState(prefill.bagId ?? '')
+  const [grinderId, setGrinderId] = useState(prefill.grinderId ?? '')
+  const [grindValue, setGrindValue] = useState(prefill.grindValue?.toString() ?? '')
 
   function selectCoffee(id: string) {
     setCoffeeId(id)
@@ -70,7 +74,7 @@ export default function BrewNueva() {
   const [doseG, setDoseG] = useState(prefill.doseG?.toString() ?? '')
   const [waterG, setWaterG] = useState(prefill.waterG?.toString() ?? '')
   const [timeS, setTimeS] = useState(prefill.timeS?.toString() ?? '')
-  const [grind, setGrind] = useState('')
+  const [grind, setGrind] = useState(prefill.grind ?? '')
   const [rating, setRating] = useState(0)
   const [taste, setTaste] = useState<TasteLabel | null>(null)
   const [notes, setNotes] = useState('')
