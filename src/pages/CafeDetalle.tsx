@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase.ts'
 import LabelScanner from '../components/LabelScanner.tsx'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { formatRatio, waterForCoffee } from '../lib/ratio.ts'
+import { formatGrind } from '../lib/grinders.ts'
 import { shareRecipeCard } from '../lib/shareCard.ts'
 import { daysSinceRoast, freshnessState, FRESHNESS_LABEL } from '../lib/freshness.ts'
 import { aggregateTastings, parseTasting, type TastingProfile } from '../lib/tasting.ts'
@@ -288,9 +289,10 @@ function RecipesSection({
       method: editing,
       ratio: Number(draft.ratio),
       dose_g: Number(draft.dose_g),
-      grind_setting: draft.grind_setting.trim() || null,
+      // molienda: un dato en dos modos — molinillo+ajuste O texto libre
+      grind_setting: draft.grinder_id ? null : draft.grind_setting.trim() || null,
       grinder_id: draft.grinder_id || null,
-      grind_value: draft.grind_value ? Number(draft.grind_value) : null,
+      grind_value: draft.grinder_id && draft.grind_value !== '' ? Number(draft.grind_value) : null,
       water_temp_c: draft.water_temp_c ? Number(draft.water_temp_c) : null,
       target_time_s: draft.target_time_s ? Number(draft.target_time_s) : null,
       updated_at: new Date().toISOString(),
@@ -342,7 +344,11 @@ function RecipesSection({
                         ratio: recipe.ratio,
                         doseG: recipe.dose_g,
                         waterG: waterForCoffee(recipe.dose_g, recipe.ratio),
-                        grind: recipe.grind_setting,
+                        grind: formatGrind(
+                          recipe.grind_setting,
+                          recipe.grind_value,
+                          grinders.find((g) => g.id === recipe.grinder_id)?.name ?? null,
+                        ),
                         tempC: recipe.water_temp_c,
                         targetTimeS: recipe.target_time_s,
                       })
@@ -369,31 +375,33 @@ function RecipesSection({
                         onChange={(e) => setDraft({ ...draft, dose_g: e.target.value })} className={input} data-numeric />
                     </label>
                   </div>
-                  {grinders.length > 0 && (
-                    <div className="mt-2 flex gap-2">
+                  {/* molienda: un solo campo lógico — molinillo+ajuste o texto libre */}
+                  <div className="mt-2 flex gap-2">
+                    {grinders.length > 0 && (
                       <label className="flex-1">
                         <span className={label}>Molinillo</span>
                         <select value={draft.grinder_id}
                           onChange={(e) => setDraft({ ...draft, grinder_id: e.target.value })} className={input}>
-                          <option value="">—</option>
+                          <option value="">— texto libre</option>
                           {grinders.map((g) => (
                             <option key={g.id} value={g.id}>{g.name}</option>
                           ))}
                         </select>
                       </label>
+                    )}
+                    {draft.grinder_id ? (
                       <label className="w-20">
                         <span className={label}>Ajuste</span>
                         <input type="number" inputMode="decimal" step="0.5" value={draft.grind_value}
                           onChange={(e) => setDraft({ ...draft, grind_value: e.target.value })} className={input} data-numeric />
                       </label>
-                    </div>
-                  )}
-                  <div className="mt-2 flex gap-2">
-                    <label className="flex-1">
-                      <span className={label}>Molienda</span>
-                      <input value={draft.grind_setting} placeholder="p. ej. 12 clics"
-                        onChange={(e) => setDraft({ ...draft, grind_setting: e.target.value })} className={input} />
-                    </label>
+                    ) : (
+                      <label className="flex-1">
+                        <span className={label}>Molienda</span>
+                        <input value={draft.grind_setting} placeholder="p. ej. 12 clics"
+                          onChange={(e) => setDraft({ ...draft, grind_setting: e.target.value })} className={input} />
+                      </label>
+                    )}
                     <label className="w-20">
                       <span className={label}>°C</span>
                       <input type="number" inputMode="numeric" min="1" max="100" value={draft.water_temp_c}

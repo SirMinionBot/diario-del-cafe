@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import BrewTimer from '../components/BrewTimer.tsx'
 import CoffeeSelect from '../components/CoffeeSelect.tsx'
 import { useCoffeeData } from '../hooks/useCoffeeData.ts'
+import { formatGrind } from '../lib/grinders.ts'
 import { supabase } from '../lib/supabase.ts'
 import { METHODS, METHOD_LIST, type MethodId } from '../lib/methods.ts'
 import { coffeeForWater, formatRatio, ratioFor, waterForCoffee } from '../lib/ratio.ts'
@@ -82,7 +83,7 @@ export default function Preparar() {
       grind_value: brew.grind_value,
     })
     setRepeatMsg(
-      `↻ Precargado: ${coffee.name} · ${brew.dose_g} g${brew.grind_setting ? ` · ${brew.grind_setting}` : ''}` +
+      `↻ Precargado: ${coffee.name} · ${brew.dose_g} g${formatGrind(brew.grind_setting, brew.grind_value) ? ` · ${formatGrind(brew.grind_setting, brew.grind_value)}` : ''}` +
         (brew.bag_id && !bagAlive ? ' (paquete ya terminado, omitido)' : ''),
     )
   }

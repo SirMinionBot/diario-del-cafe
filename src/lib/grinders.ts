@@ -35,3 +35,18 @@ export function translateSetting(
   const clamped = Math.min(to.maxSetting, Math.max(to.minSetting, snapped))
   return { ok: true, value: Math.round(clamped * 10) / 10 }
 }
+
+/**
+ * Representación única de la molienda para mostrar: si hay ajuste de
+ * molinillo manda el numérico («C40 · 14», o «14» sin nombre), si no el
+ * texto libre. Los dos campos son el MISMO dato en dos modos — nunca se
+ * muestran por separado.
+ */
+export function formatGrind(
+  grindSetting: string | null,
+  grindValue: number | null,
+  grinderName: string | null = null,
+): string | null {
+  if (grindValue !== null) return grinderName ? `${grinderName} · ${grindValue}` : String(grindValue)
+  return grindSetting
+}

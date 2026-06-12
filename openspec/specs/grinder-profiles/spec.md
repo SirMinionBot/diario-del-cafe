@@ -13,11 +13,15 @@ El usuario SHALL poder registrar sus molinillos con nombre/modelo, rango de ajus
 - **THEN** el molinillo queda disponible para asociarlo a recetas y extracciones
 
 ### Requirement: Referencia desde recetas y extracciones
-Las recetas y las extracciones SHALL poder referenciar opcionalmente un molinillo junto al ajuste numérico, conviviendo con el campo de molienda libre existente.
+La molienda de recetas y extracciones SHALL ser UN solo dato con dos modos excluyentes: molinillo registrado + ajuste numérico, O texto libre (para quien no registra molinillo). La UI SHALL pedir solo el modo activo y al guardar SHALL anular el campo del otro modo; la presentación se compone con `formatGrind` desde cualquiera de los dos.
 
 #### Scenario: Receta con molinillo
 - **WHEN** el usuario guarda una receta con molinillo «C40» y ajuste 14
-- **THEN** la receta almacena la referencia y el ajuste, sin perder el texto libre previo
+- **THEN** la receta almacena la referencia y el ajuste, y el texto libre queda a null (sin dato redundante)
+
+#### Scenario: Sin molinillo elegido
+- **WHEN** el usuario guarda con la opción «texto libre» y escribe «media-fina»
+- **THEN** se almacena solo el texto libre, con molinillo y ajuste a null
 
 #### Scenario: Molinillo eliminado
 - **WHEN** se elimina un molinillo referenciado por recetas o brews

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { translateSetting, type GrinderRange } from './grinders.ts'
+import { formatGrind, translateSetting, type GrinderRange } from './grinders.ts'
 
 const c40: GrinderRange = { name: 'Comandante C40', minSetting: 0, maxSetting: 40, step: 1 }
 const wide: GrinderRange = { name: 'Molinillo ancho', minSetting: 0, maxSetting: 80, step: 2 }
@@ -36,5 +36,21 @@ describe('translateSetting (spec grinder-profiles)', () => {
   it('resultado acotado al rango destino', () => {
     const r = translateSetting(40, c40, wide)
     expect(r).toEqual({ ok: true, value: 80 })
+  })
+})
+
+describe('formatGrind', () => {
+  it('con ajuste de molinillo manda el numérico con nombre', () => {
+    expect(formatGrind('fina', 14, 'C40')).toBe('C40 · 14')
+  })
+  it('ajuste sin nombre de molinillo: solo el número', () => {
+    expect(formatGrind(null, 14)).toBe('14')
+  })
+  it('sin ajuste cae al texto libre (o null si no hay nada)', () => {
+    expect(formatGrind('media-fina', null)).toBe('media-fina')
+    expect(formatGrind(null, null)).toBeNull()
+  })
+  it('el ajuste 0 es un ajuste válido, no ausencia', () => {
+    expect(formatGrind('gruesa', 0, 'Comandante')).toBe('Comandante · 0')
   })
 })

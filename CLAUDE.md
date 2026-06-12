@@ -43,6 +43,9 @@
   JSON tal cual.
 - Molinillos: traducción de ajustes en `src/lib/grinders.ts`, lineal por
   rango y SIEMPRE etiquetada como aproximada en la UI.
+- Molienda: UN dato con dos modos excluyentes — molinillo+ajuste numérico O
+  texto libre (`grind_setting`); al guardar se anula el modo inactivo y la
+  vista se compone con `formatGrind` (nunca pedir/mostrar ambos a la vez).
 
 ## Sistema de diseño (Carta de tostador)
 

@@ -102,9 +102,10 @@ export default function BrewNueva() {
       method: methodId,
       dose_g: Number(doseG),
       water_g: waterG ? Number(waterG) : null,
-      grind_setting: grind.trim() || null,
+      // molienda: UN dato en dos modos — molinillo+ajuste O texto libre, nunca ambos
+      grind_setting: grinderId ? null : grind.trim() || null,
       grinder_id: grinderId || null,
-      grind_value: grindValue ? Number(grindValue) : null,
+      grind_value: grinderId && grindValue !== '' ? Number(grindValue) : null,
       time_s: timeS ? Number(timeS) : null,
       rating: rating || null,
       taste_label: taste,
@@ -163,7 +164,7 @@ export default function BrewNueva() {
       method: methodId,
       ratio,
       dose_g: Number(doseG),
-      grind_setting: grind.trim() || null,
+      grind_setting: grinderId ? null : grind.trim() || null,
       target_time_s: timeS ? Number(timeS) : null,
       updated_at: new Date().toISOString(),
     }
@@ -267,30 +268,35 @@ export default function BrewNueva() {
             <input type="number" inputMode="numeric" min="1" value={timeS}
               onChange={(e) => setTimeS(e.target.value)} className={input} data-numeric />
           </label>
-          <label className="flex-1">
-            <span className={label}>Molienda</span>
-            <input value={grind} placeholder="12 clics" onChange={(e) => setGrind(e.target.value)} className={input} />
-          </label>
         </div>
 
-        {grinders.length > 0 && (
-          <div className="flex gap-3">
+        {/* molienda: un solo campo lógico — con molinillo el ajuste es numérico,
+            sin él texto libre. Nunca se piden los dos a la vez. */}
+        <div className="flex gap-3">
+          {grinders.length > 0 && (
             <label className="flex-1">
               <span className={label}>Molinillo</span>
               <select value={grinderId} onChange={(e) => setGrinderId(e.target.value)} className={input}>
-                <option value="">—</option>
+                <option value="">— texto libre</option>
                 {grinders.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
             </label>
+          )}
+          {grinderId ? (
             <label className="w-24">
               <span className={label}>Ajuste</span>
               <input type="number" inputMode="decimal" step="0.5" value={grindValue}
                 onChange={(e) => setGrindValue(e.target.value)} className={input} data-numeric />
             </label>
-          </div>
-        )}
+          ) : (
+            <label className="flex-1">
+              <span className={label}>Molienda</span>
+              <input value={grind} placeholder="12 clics / media-fina" onChange={(e) => setGrind(e.target.value)} className={input} />
+            </label>
+          )}
+        </div>
 
         {/* valoración 1–5 */}
         <div>

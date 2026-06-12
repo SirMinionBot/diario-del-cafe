@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase.ts'
+import { formatGrind } from '../lib/grinders.ts'
 import { METHODS } from '../lib/methods.ts'
 import { formatRatio, ratioFor } from '../lib/ratio.ts'
 import { formatTime } from '../lib/timer.ts'
@@ -90,7 +91,7 @@ export default function Comparar() {
     },
     { label: 'Temperatura', va: a.water_temp_c ? `${a.water_temp_c} °C` : '—', vb: b.water_temp_c ? `${b.water_temp_c} °C` : '—' },
     { label: 'Tiempo', va: a.time_s ? formatTime(a.time_s) : '—', vb: b.time_s ? formatTime(b.time_s) : '—' },
-    { label: 'Molienda', va: a.grind_setting ?? (a.grind_value?.toString() ?? '—'), vb: b.grind_setting ?? (b.grind_value?.toString() ?? '—') },
+    { label: 'Molienda', va: formatGrind(a.grind_setting, a.grind_value) ?? '—', vb: formatGrind(b.grind_setting, b.grind_value) ?? '—' },
     { label: 'Valoración', va: a.rating ? '⭐'.repeat(a.rating) : '—', vb: b.rating ? '⭐'.repeat(b.rating) : '—' },
     { label: 'Sabor', va: a.taste_label ?? '—', vb: b.taste_label ?? '—' },
   ]
